@@ -31,16 +31,18 @@ static inline void case_lower2upper(char *lower_case, char *upper_case)
     upper_case[i] = '\0';
 }
 
-static void sorm_header_generate_struct(
+static void header_generate_struct(
         FILE *file, const sorm_table_descriptor_t* table_desc)
 {
     int i;
-    char *upper_column_name;
-    
+    char *upper_column_name, *upper_table_name;
 
     fprintf(file, "typedef struct %s_s\n{\n"
-            INDENT "srom_table_descriptor_t table_desc;\n\n",
+            INDENT "sorm_table_descriptor_t table_desc;\n\n",
             table_desc->name);
+    
+    upper_table_name = mem_malloc(strlen(table_desc->name) + 1);
+    case_lower2upper(table_desc->name, upper_table_name);
 
     for(i = 0; i < table_desc->columns_num; i ++)
     {
@@ -65,8 +67,9 @@ static void sorm_header_generate_struct(
                     case_lower2upper(
                             table_desc->columns[i].name, upper_column_name);
 
-                    fprintf(file, INDENT "char        %s[%s_MAX_LEN + 1];\n\n",
-                            table_desc->columns[i].name, upper_column_name);
+                    fprintf(file, INDENT "char        %s[%s_%s_MAX_LEN + 1];\n\n",
+                            table_desc->columns[i].name,
+                            upper_table_name, upper_column_name);
                     mem_free(upper_column_name);
                     upper_column_name = NULL;
                 }else
@@ -86,51 +89,51 @@ static void sorm_header_generate_struct(
 
     }
 
+    mem_free(upper_table_name);
     fprintf(file, "} %s_t;\n\n", table_desc->name);
 }
 
-static void sorm_header_generate_func_get_desc(
+static void header_generate_func_get_desc(
         FILE *file, const sorm_table_descriptor_t* table_desc)
 {
     fprintf(file, "sorm_table_descriptor_t* %s_get_desc();\n\n", table_desc->name);
 }
 
-static void sorm_header_generate_func_new(
+static void header_generate_func_new(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
     fprintf(file, "%s_t* %s_new();\n\n", table_desc->name, table_desc->name);
 }
 
-static void sorm_header_generate_func_free(
+static void header_generate_func_free(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
     fprintf(file, "void %s_free(%s_t *%s);\n\n", 
             table_desc->name, table_desc->name, table_desc->name);
 }
 
-static void sorm_header_generate_func_create_table(
+static void header_generate_func_create_table(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
     fprintf(file, "int %s_create_table(const sorm_connection_t *conn);\n\n", 
             table_desc->name);
 }
 
-static void sorm_header_generate_func_delete_table(
+static void header_generate_func_delete_table(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
     fprintf(file, "int %s_delete_table(const sorm_connection_t *conn);\n\n", 
             table_desc->name);
 }
 
-static void sorm_header_generate_func_save(
+static void header_generate_func_save(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
-    fprintf(file, "int %s_save(const sorm_connection_t *conn, "
-            "const %s_t *%s);\n\n",
+    fprintf(file, "int %s_save(sorm_connection_t *conn, %s_t *%s);\n\n",
             table_desc->name, table_desc->name, table_desc->name);
 }
 
-static void sorm_header_generate_func_set_mem(
+static void header_generate_func_set_mem(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
     int i;
@@ -142,17 +145,20 @@ static void sorm_header_generate_func_set_mem(
             case SORM_TYPE_INT :
                 fprintf(file, "int %s_set_%s(%s_t *%s, int %s);\n", 
                         table_desc->name, table_desc->columns[i].name, 
-                        table_desc->name, table_desc->name, table_desc->name);
+                        table_desc->name, table_desc->name, 
+                        table_desc->columns[i].name);
                 break;
             case SORM_TYPE_TEXT :
                 fprintf(file, "int %s_set_%s(%s_t *%s, char* %s);\n", 
                         table_desc->name, table_desc->columns[i].name, 
-                        table_desc->name, table_desc->name, table_desc->name);
+                        table_desc->name, table_desc->name, 
+                        table_desc->columns[i].name);
                 break;
             case SORM_TYPE_DOUBLE :
                 fprintf(file, "int %s_set_%s(%s_t *%s, double %s);\n", 
                         table_desc->name, table_desc->columns[i].name, 
-                        table_desc->name, table_desc->name, table_desc->name);
+                        table_desc->name, table_desc->name, 
+                        table_desc->columns[i].name);
                 break;
             default :
                 error("Invalid SORM_TYPE.");
@@ -163,7 +169,7 @@ static void sorm_header_generate_func_set_mem(
     fprintf(file, "\n");
 }
 
-static void sorm_header_generate_func_delete(
+static void header_generate_func_delete(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
     int i;
@@ -208,7 +214,7 @@ static void sorm_header_generate_func_delete(
     fprintf(file, "\n");
 }
 
-static void sorm_header_generate_func_select(
+static void header_generate_func_select(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
     int i;
@@ -290,9 +296,11 @@ void header_generate(
     sprintf(file_name, "%s_sorm.h", table_desc->name);
     
     file = fopen(file_name, "w");
+    mem_free(file_name);
     if(file == NULL)
     {
         error("fopen file(%s) error : %s.", file_name, strerror(errno));
+        return;
     }
     
     upper_table_name = mem_malloc(table_name_len + 1);
@@ -302,19 +310,17 @@ void header_generate(
                   "#define %s_SORM_H\n\n", upper_table_name, upper_table_name);
     fprintf(file, "#include \"sorm.h\"\n\n");
     
-    /* #define XX_MAX_LEN XX */
+    /* #define XX_XX_MAX_LEN XX */
     for(i = 0; i < table_desc->columns_num; i ++)
     {
-        if(table_desc->columns[i].type == SORM_TYPE_TEXT)
-        {
-            upper_column_name = 
-                mem_malloc(strlen(table_desc->columns[i].name) + 1);
-            case_lower2upper(table_desc->columns[i].name, upper_column_name);
-            fprintf(file, "#define %s_MAX_LEN %d\n", upper_column_name, 
-                    table_desc->columns[i].text_max_len);
-            free(upper_column_name);
-            upper_column_name = NULL;
-        }
+        upper_column_name = 
+            mem_malloc(strlen(table_desc->columns[i].name) + 1);
+        case_lower2upper(table_desc->columns[i].name, upper_column_name);
+        fprintf(file, "#define %s_%s_MAX_LEN %d\n", 
+                upper_table_name, upper_column_name, 
+                table_desc->columns[i].text_max_len);
+        free(upper_column_name);
+        upper_column_name = NULL;
     }
     fprintf(file, "\n");
 
@@ -322,18 +328,20 @@ void header_generate(
     fprintf(file, "#define %s_DESC %s_get_desc()\n\n", upper_table_name, 
             table_desc->name);
 
+    mem_free(upper_table_name);
+
     /* typedef struct xxxx_s */
-    sorm_header_generate_struct(file, table_desc);
+    header_generate_struct(file, table_desc);
     /* functions */
-    sorm_header_generate_func_get_desc(file, table_desc);
-    sorm_header_generate_func_new(file, table_desc);
-    sorm_header_generate_func_free(file, table_desc);
-    sorm_header_generate_func_create_table(file, table_desc);
-    sorm_header_generate_func_delete_table(file, table_desc);
-    sorm_header_generate_func_save(file, table_desc);
-    sorm_header_generate_func_set_mem(file, table_desc);
-    sorm_header_generate_func_delete(file, table_desc);
-    sorm_header_generate_func_select(file, table_desc);
+    header_generate_func_get_desc(file, table_desc);
+    header_generate_func_new(file, table_desc);
+    header_generate_func_free(file, table_desc);
+    header_generate_func_create_table(file, table_desc);
+    header_generate_func_delete_table(file, table_desc);
+    header_generate_func_save(file, table_desc);
+    header_generate_func_set_mem(file, table_desc);
+    header_generate_func_delete(file, table_desc);
+    header_generate_func_select(file, table_desc);
 
     fprintf(file, "#endif");
     

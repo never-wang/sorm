@@ -19,6 +19,14 @@
 #include "sorm.h"
 #include "memory.h"
 
+
+#define INDENT "    "
+#define INDENT_TWICE INDENT INDENT
+#define INDENT_TRIPLE INDENT_TWICE INDENT
+#define HEADER_NAME_MAX_LEN 127
+
+#define _str(string) ((string) == NULL ? "NULL" : (string))
+
 static inline void case_lower2upper(char *lower_case, char *upper_case)
 {
     int i;
@@ -35,12 +43,15 @@ static void c_generate_column_desc(
         FILE *file, const sorm_table_descriptor_t* table_desc)
 {
     int i;
-    char *upper_column_name;
+    char *upper_column_name, *upper_table_name;
     sorm_column_descriptor_t *column_desc;
 
-    fprintf(file, "static const sorm_column_descriptor_t "
+    fprintf(file, "static sorm_column_descriptor_t "
             "%s_columns_descriptor[%d] =\n{\n", 
             table_desc->name, table_desc->columns_num);
+    
+    upper_table_name = mem_malloc(strlen(table_desc->name) + 1);
+    case_lower2upper(table_desc->name, upper_table_name);
 
     for(i = 0; i < table_desc->columns_num; i ++)
     {
@@ -54,7 +65,7 @@ static void c_generate_column_desc(
                 INDENT_TWICE "%s,\n"            /* type                 */
                 INDENT_TWICE "%s,\n"            /* constraint           */
                 INDENT_TWICE "%s,\n"            /* mem                  */
-                INDENT_TWICE "%s_MAX_LEN,\n"    /* text_max_len         */
+                INDENT_TWICE "%s_%s_MAX_LEN,\n"    /* text_max_len         */
                 INDENT_TWICE "SORM_OFFSET(%s_t, %s),\n"
                                                 /* offset               */
                 INDENT_TWICE "%d,\n"            /* is_foreign_key       */
@@ -63,22 +74,24 @@ static void c_generate_column_desc(
                 INDENT "},\n",
                 column_desc->name, i, sorm_strtype(column_desc->type),
                 sorm_strconstraint(column_desc->constraint), 
-                sorm_strmem(column_desc->mem), upper_column_name,
+                sorm_strmem(column_desc->mem), 
+                upper_table_name, upper_column_name,
                 table_desc->name, column_desc->name, 
-                column_desc->is_foreign_key, column_desc->foreign_table_name,
-                column_desc->foreign_column_name);
+                column_desc->is_foreign_key, _str(column_desc->foreign_table_name),
+                _str(column_desc->foreign_column_name));
 
         mem_free(upper_column_name);
         upper_column_name = NULL;
     }
 
+    mem_free(upper_table_name);
     fprintf(file, "};\n\n");
 }
 
 static void c_generate_device_desc(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
-    fprintf(file, "static const sorm_table_descriptor_t "
+    fprintf(file, "static sorm_table_descriptor_t "
             "%s_table_descriptor =\n{\n", table_desc->name);
 
     fprintf(file, INDENT "\"%s\",\n"                /* name */
@@ -142,11 +155,10 @@ static void c_generate_func_delete_table(
 static void c_generate_func_save(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
-    fprintf(file, "int %s_save(const sorm_connection_t *conn, "
-            "const %s_t *%s);\n\n",
+    fprintf(file, "int %s_save(sorm_connection_t *conn, %s_t *%s)\n{\n",
             table_desc->name, table_desc->name, table_desc->name);
     fprintf(file, INDENT "return sorm_save"
-            "(conn, (const sorm_table_descriptor_t*)%s);\n", table_desc->name);
+            "(conn, (sorm_table_descriptor_t*)%s);\n", table_desc->name);
     fprintf(file, "}\n\n");
 }
 
@@ -162,25 +174,34 @@ static void c_generate_func_set_mem(
             case SORM_TYPE_INT :
                 fprintf(file, "int %s_set_%s(%s_t *%s, int %s)\n{\n", 
                         table_desc->name, table_desc->columns[i].name, 
-                        table_desc->name, table_desc->name, table_desc->name);
+                        table_desc->name, table_desc->name, 
+                        table_desc->columns[i].name);
+                fprintf(file, INDENT "return sorm_set_column_value("
+                        "(sorm_table_descriptor_t*)%s, %d, &%s);\n",
+                        table_desc->name, i, table_desc->columns[i].name);
                 break;
             case SORM_TYPE_TEXT :
-                fprintf(file, "int %s_set_%s(%s_t *%s, char* %s);\n", 
+                fprintf(file, "int %s_set_%s(%s_t *%s, char* %s)\n{\n", 
                         table_desc->name, table_desc->columns[i].name, 
-                        table_desc->name, table_desc->name, table_desc->name);
+                        table_desc->name, table_desc->name, 
+                        table_desc->columns[i].name);
+                fprintf(file, INDENT "return sorm_set_column_value("
+                        "(sorm_table_descriptor_t*)%s, %d, %s);\n",
+                        table_desc->name, i, table_desc->columns[i].name);
                 break;
             case SORM_TYPE_DOUBLE :
-                fprintf(file, "int %s_set_%s(%s_t *%s, double %s);\n", 
+                fprintf(file, "int %s_set_%s(%s_t *%s, double %s)\n{\n", 
                         table_desc->name, table_desc->columns[i].name, 
-                        table_desc->name, table_desc->name, table_desc->name);
+                        table_desc->name, table_desc->name, 
+                        table_desc->columns[i].name);
+                fprintf(file, INDENT "return sorm_set_column_value("
+                        "(sorm_table_descriptor_t*)%s, %d, &%s);\n",
+                        table_desc->name, i, table_desc->columns[i].name);
                 break;
             default :
                 error("Invalid SORM_TYPE.");
                 exit(0);
         }
-        fprintf(file, INDENT "return sorm_set_column_value("
-                "(sorm_table_descriptor_t*)%s, %d, %s);\n",
-                table_desc->name, i, table_desc->columns[i].name);
         fprintf(file, "}\n\n");
     }
 }
@@ -197,7 +218,6 @@ static void c_generate_func_delete(
             "(conn, (sorm_table_descriptor_t *)%s);\n", table_desc->name);
     fprintf(file, "}\n\n");
 
-    /* TODO */
     for(i = 0; i < table_desc->columns_num; i ++)
     {
         if(table_desc->columns[i].constraint == SORM_CONSTRAINT_PK 
@@ -209,29 +229,41 @@ static void c_generate_func_delete(
             {
                 case SORM_TYPE_INT :
                     fprintf(file, "int %s_delete_by_%s(const sorm_connection_t "
-                            "*conn, int %s);\n", table_desc->name, 
+                            "*conn, int %s)\n{\n", table_desc->name, 
                             table_desc->columns[i].name, 
                             table_desc->columns[i].name);
+                    fprintf(file, INDENT "return sorm_delete_by_column(\n"
+                            INDENT_TRIPLE "conn, &%s_table_descriptor, "
+                            "%d, (void *)&%s);\n",
+                            table_desc->name, i, table_desc->columns[i].name);
                     break;
                 case SORM_TYPE_TEXT :
                     fprintf(file, "int %s_delete_by_%s(const sorm_connection_t "
-                            "*conn, char* %s);\n", table_desc->name,
+                            "*conn, char* %s)\n{\n", table_desc->name,
                             table_desc->columns[i].name, 
                             table_desc->columns[i].name);
+                    fprintf(file, INDENT "return sorm_delete_by_column(\n"
+                            INDENT_TRIPLE "conn, &%s_table_descriptor, "
+                            "%d, (void *)%s);\n",
+                            table_desc->name, i, table_desc->columns[i].name);
                     break;
                 case SORM_TYPE_DOUBLE :
                     fprintf(file, "int %s_delete_by_%s(const sorm_connection_t "
-                            "*conn, double %s);\n", table_desc->name,
+                            "*conn, double %s)\n{\n", table_desc->name,
                             table_desc->columns[i].name, 
                             table_desc->columns[i].name);
+                    fprintf(file, INDENT "return sorm_delete_by_column(\n"
+                            INDENT_TRIPLE "conn, &%s_table_descriptor, "
+                            "%d, (void *)&%s);\n",
+                            table_desc->name, i, table_desc->columns[i].name);
                     break;
                 default :
                     error("Invalid SORM_TYPE.");
                     exit(0);
             }
+            fprintf(file, "}\n\n");
         }
     }
-    fprintf(file, "\n");
 }
 
 static void c_generate_func_select(
@@ -256,35 +288,50 @@ static void c_generate_func_select(
                             INDENT_TWICE "device_t **device)\n{\n", 
                             table_desc->name, table_desc->columns[i].name, 
                             table_desc->columns[i].name);
+                    fprintf(file, INDENT "return sorm_select_one_by_column(\n"
+                            INDENT_TRIPLE "conn, &%s_table_descriptor, "
+                            "column_names,\n"
+                            INDENT_TRIPLE "%d, (void *)&%s, "
+                            "(sorm_table_descriptor_t **)%s);\n", 
+                            table_desc->name, i, table_desc->columns[i].name, 
+                            table_desc->name);
                     break;
                 case SORM_TYPE_TEXT :
                     fprintf(file, "int %s_select_by_%s(\n"
                             INDENT_TWICE "const sorm_connection_t *conn,\n"
                             INDENT_TWICE "const char *column_names," 
                             "const char* %s,\n"
-                            INDENT_TWICE "device_t **device);\n", 
+                            INDENT_TWICE "device_t **device)\n{\n", 
                             table_desc->name, table_desc->columns[i].name, 
                             table_desc->columns[i].name);
+                    fprintf(file, INDENT "return sorm_select_one_by_column(\n"
+                            INDENT_TRIPLE "conn, &%s_table_descriptor, "
+                            "column_names,\n"
+                            INDENT_TRIPLE "%d, (void *)%s, "
+                            "(sorm_table_descriptor_t **)%s);\n", 
+                            table_desc->name, i, table_desc->columns[i].name, 
+                            table_desc->name);
                     break;
                 case SORM_TYPE_DOUBLE :
                     fprintf(file, "int %s_select_by_%s(\n"
                             INDENT_TWICE "const sorm_connection_t *conn,\n"
                             INDENT_TWICE "const char *column_names, "
                             "double* %s,\n"
-                            INDENT_TWICE "device_t **device);\n", 
+                            INDENT_TWICE "device_t **device)\n{\n", 
                             table_desc->name, table_desc->columns[i].name, 
                             table_desc->columns[i].name);
+                    fprintf(file, INDENT "return sorm_select_one_by_column(\n"
+                            INDENT_TRIPLE "conn, &%s_table_descriptor, "
+                            "column_names,\n"
+                            INDENT_TRIPLE "%d, (void *)&%s, "
+                            "(sorm_table_descriptor_t **)%s);\n", 
+                            table_desc->name, i, table_desc->columns[i].name, 
+                            table_desc->name);
                     break;
                 default :
                     error("Invalid SORM_TYPE.");
                     exit(0);
             }
-            fprintf(file, INDENT "return sorm_select_one_by_column(\n"
-                    INDENT_TRIPLE "conn, &%s_table_descriptor, column_names,\n"
-                    INDENT_TRIPLE "%d, (void *)%s, "
-                    "(sorm_table_descriptor_t **)%s);\n", 
-                    table_desc->name, i, table_desc->columns[i].name, 
-                    table_desc->name);
             fprintf(file, "}\n\n");
         }
     }
@@ -294,7 +341,7 @@ static void c_generate_func_select(
             INDENT_TWICE "const char *column_names, const char *filter,\n" 
             INDENT_TWICE "int *n, %s_t **%ss_array)\n{\n"
             INDENT       "return sorm_select_some_array_by(\n"
-            INDENT_TRIPLE "conn, &%s_table_descriptor, column_name,\n"
+            INDENT_TRIPLE "conn, &%s_table_descriptor, column_names,\n"
             INDENT_TRIPLE "filter, n, "
             "(sorm_table_descriptor_t **)%ss_array);\n}\n\n",
             table_desc->name, table_desc->name, table_desc->name, 
@@ -304,7 +351,7 @@ static void c_generate_func_select(
             INDENT_TWICE "const char *column_names, const char *filter,\n" 
             INDENT_TWICE "int *n, sorm_list_t **%ss_list_head)\n{\n"
             INDENT       "return sorm_select_some_list_by(\n"
-            INDENT_TRIPLE "conn, &%s_table_descriptor, column_name,\n"
+            INDENT_TRIPLE "conn, &%s_table_descriptor, column_names,\n"
             INDENT_TRIPLE "filter, n, %ss_list_head);\n}\n\n",
             table_desc->name, table_desc->name, table_desc->name, 
             table_desc->name);
@@ -313,7 +360,7 @@ static void c_generate_func_select(
             INDENT_TWICE "const char *column_names, const char *filter,\n"
             INDENT_TWICE "int *n, %s_t **%ss_array)\n{\n"
             INDENT       "return sorm_select_all_array_by(\n"
-            INDENT_TRIPLE "conn, &%s_table_descriptor, column_name,\n"
+            INDENT_TRIPLE "conn, &%s_table_descriptor, column_names,\n"
             INDENT_TRIPLE "filter, n, "
             "(sorm_table_descriptor_t **)%ss_array);\n}\n\n",
             table_desc->name, table_desc->name, table_desc->name, 
@@ -323,7 +370,7 @@ static void c_generate_func_select(
             INDENT_TWICE "const char *column_names, const char *filter,\n" 
             INDENT_TWICE "int *n, sorm_list_t **%ss_list_head)\n{\n"
             INDENT       "return sorm_select_all_list_by(\n"
-            INDENT_TRIPLE "conn, &%s_table_descriptor, column_name,\n"
+            INDENT_TRIPLE "conn, &%s_table_descriptor, column_names,\n"
             INDENT_TRIPLE "filter, n, %ss_list_head);\n}\n",
             table_desc->name, table_desc->name, 
             table_desc->name);

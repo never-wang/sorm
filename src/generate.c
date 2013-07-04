@@ -14,7 +14,7 @@
  ***************************************************************************/
 #include <string.h>
 
-#include "y.tab.h"
+#include "parser_yacc.h"
 #include "stdio.h"
 #include "generate.h"
 #include "memory.h"

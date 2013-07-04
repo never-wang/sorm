@@ -32,17 +32,6 @@
 
 #define SQL_STMT_MAX_LEN 1023
 
-extern zlog_category_t *zlog_category;
-#define NK_LOG_SORM zlog_category
-#define log(...)	    zlog_fatal(zlog_category, __VA_ARGS__)
-#define debug(...)	    zlog_debug(zlog_category, __VA_ARGS__)
-#define error(...)	    zlog_error(zlog_category, __VA_ARGS__)
-#define info(...)	    zlog_info(zlog_category, __VA_ARGS__)
-//#define log(...)	    NULL
-//#define debug(...)	    NULL
-//#define error(...)	    NULL
-//#define info(...)	    NULL
-
 #define SORM_NO_PK  -1
 
 #define ALL_INDEXES -1 /* used in parse select columns_name to indexes, means
@@ -295,7 +284,7 @@ static char* const sorm_constraintstr[] =
 
 static inline const char* sorm_strconstraint(sorm_constraint_t constraint)
 {
-    return sorm_memstr[constraint];
+    return sorm_constraintstr[constraint];
 }
 
 /**
@@ -407,9 +396,9 @@ int sorm_delete(const sorm_connection_t *conn, sorm_table_descriptor_t *desc);
  *
  * @return: error code
  */
-int sorm_delete_by_PK(
+int sorm_delete_by_column(
         const sorm_connection_t *conn, const sorm_table_descriptor_t *table_desc,
-        const void *PK_val);
+        int column_index, const void *column_value);
 /**
  * @brief: delete rows from a table according the filter, the filter use
  *	the same syntax with statement after WHERE in SQL
@@ -423,21 +412,6 @@ int sorm_delete_by_PK(
 int sorm_delete_by(
         const sorm_connection_t *conn, const sorm_table_descriptor_t *table_desc, 
         const char *filter);
-/**
- * @brief: select a sorm object from a table according the filter, the filter use
- *	the same syntax with statement after WHERE in SQL
- *
- * @param conn: the connection to the database
- * @param desc: the description for the table
- * @param filter: the filter
- * @param get_row: the got sorm object
- *
- * @return: error code
- */
-int sorm_select_one_by(
-        const sorm_connection_t *conn, const sorm_table_descriptor_t *desc, 
-        const char *column_names, const char *filter, 
-        sorm_table_descriptor_t **get_row);
 int sorm_select_one_by_column(
         const sorm_connection_t *conn, const sorm_table_descriptor_t *table_desc,
         const char *columns_name, int column_index, const void *column_value,

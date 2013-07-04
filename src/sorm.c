@@ -18,6 +18,7 @@
 
 #include "sorm.h"
 #include "memory.h"
+#include "log.h"
 
 #define _list_cpy_free(desc, head, n, rows, free) \
     __list_cpy_free(desc, head, n, rows, (void*)(free))
@@ -33,8 +34,6 @@ typedef int(*select_core_t)(const sorm_connection_t*, sqlite3_stmt*,
         int, const sorm_table_descriptor_t**, const int*, const select_columns_t*,
         int, int *, void **);
 
-zlog_category_t *zlog_category = NULL;
-
 /**
  * @brief: free a list, the list Param can be NULL
  */
@@ -42,7 +41,7 @@ static inline void _list_free(sorm_list_t *sorm_list, void (*data_free)(void*))
 {
     sorm_list_t *pos, *pre;
 
-    //debug("Start.");
+    //log_debug("Start.");
     if(sorm_list != NULL)
     {
         sorm_list_for_each_safe(pos, pre, sorm_list)
@@ -56,7 +55,7 @@ static inline void _list_free(sorm_list_t *sorm_list, void (*data_free)(void*))
         free(sorm_list);
     }
 
-    //debug("Success return.");
+    //log_debug("Success return.");
 }
 
 /**
@@ -73,11 +72,11 @@ static inline void __list_cpy_free(
     assert(sorm_list != NULL);
     assert(rows!= NULL);
 
-    //debug("Start.");
+    //log_debug("Start.");
 
     sorm_list_for_each_safe(pos, scratch, sorm_list)
     {
-        debug("List get(%d)", i);
+        log_debug("List get(%d)", i);
         memcpy((char *)rows + table_desc->size * i, pos->data, table_desc->size);
         i ++;
         if(data_free != NULL)
@@ -89,7 +88,7 @@ static inline void __list_cpy_free(
 
     assert(i == n);
     mem_free(sorm_list);
-    //debug("Success return");
+    //log_debug("Success return");
 }
 
 static inline int _get_column_stat(
@@ -162,7 +161,7 @@ static int _sqlite3_column_bind(
                             -1, SQLITE_STATIC);
                     break;
                 default :
-                    debug("unknow sorm mem : %d", column_desc->mem);
+                    log_debug("unknow sorm mem : %d", column_desc->mem);
                     return SORM_INVALID_MEM;
             }
             break;
@@ -171,17 +170,17 @@ static int _sqlite3_column_bind(
                     *((double*)((char*)table_desc + column_desc->offset)));
             break;
         default :
-            error("unknow sorm type : %d", column_desc->type);
+            log_error("unknow sorm type : %d", column_desc->type);
             return SORM_INVALID_TYPE;
     }
     if(ret != SQLITE_OK)
     {
-        debug("sqlite3_bind (%s) with index(%d) error : %s", column_desc->name,
+        log_debug("sqlite3_bind (%s) with index(%d) error : %s", column_desc->name,
                 column_index, sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
 
-    //debug("Success return");
+    //log_debug("Success return");
     return SORM_OK;
 }
 
@@ -199,7 +198,7 @@ static inline void trim(char **str_p, char *str_end)
 {
     char *str = *str_p;
 
-    //debug("Start.");
+    //log_debug("Start.");
 
     /* trim head */
     while(((*str) == ' ') || ((*str) == '\t'))
@@ -226,7 +225,7 @@ static inline void trim(char **str_p, char *str_end)
         str_end --;
     }
 
-    //debug("Success return");
+    //log_debug("Success return");
 }
 /**
  * @brief: call sqlite3_column to get a column value of a row
@@ -249,7 +248,7 @@ static inline int _sqlite3_column(
     assert(table_desc != NULL);
     assert(stmt_handle != NULL);
 
-    //debug("Start.");
+    //log_debug("Start.");
     column_desc = &table_desc->columns[column_index];
 
     switch(column_desc->type)
@@ -266,7 +265,7 @@ static inline int _sqlite3_column(
                             result_index));
                 if(text == NULL)
                 {
-                    error("mem_strdup for column value fail.");
+                    log_error("mem_strdup for column value fail.");
                     return SORM_NOMEM;
                 }
                 *(char **)((char*)table_desc + column_desc->offset) = text; 
@@ -278,14 +277,14 @@ static inline int _sqlite3_column(
                 offset = ret;
                 if(ret < 0 || offset > column_desc->text_max_len)
                 {
-                    error("get too long text from db, "
+                    log_error("get too long text from db, "
                             "length(%d) > max length(%d)", offset, 
                             column_desc->text_max_len);
                     return SORM_TOO_LONG;
                 }
             }else
             {
-                error("unknow sorm mem : %d", column_desc->mem);
+                log_error("unknow sorm mem : %d", column_desc->mem);
                 return SORM_INVALID_MEM;
             }
             break;
@@ -294,12 +293,12 @@ static inline int _sqlite3_column(
                 sqlite3_column_double(stmt_handle, result_index);
             break;
         default :
-            error("unknow sorm type : %d", column_desc->type);
+            log_error("unknow sorm type : %d", column_desc->type);
             return SORM_INVALID_TYPE;
     }
 
     _set_column_stat(table_desc, column_index, SORM_STAT_VALUED);
-    //debug("Success return");
+    //log_debug("Success return");
     return SORM_OK;
 }
 
@@ -345,7 +344,7 @@ static inline int _get_number_from_columns_name(
     //column_name used to find column_name, _columns_name used for free
     if(column_name == NULL)
     {
-        debug("mem_strdup for column_name fail");
+        log_debug("mem_strdup for column_name fail");
         return;
     }
 
@@ -430,7 +429,7 @@ static inline int _get_number_from_columns_name(
 
     for(i = 0; i < tables_num; i ++)
     {
-        debug("select %d columns from table %s", 
+        log_debug("select %d columns from table %s", 
                 columns_num[i], tables_desc[i].name);
     }
 
@@ -465,8 +464,8 @@ static inline int _column_name_to_index_in_tables(
     assert(column_name != NULL);
     assert(index != NULL);
 
-    //debug("Start.");
-    debug("Parse column_name : %s", column_name);
+    //log_debug("Start.");
+    log_debug("Parse column_name : %s", column_name);
 
     if((_column_name = strchr(column_name, TABLE_COLUMN_DELIMITER)) != NULL)
     {
@@ -492,7 +491,7 @@ static inline int _column_name_to_index_in_tables(
         }
         if((*table_index) == -1)
         {
-            debug("Invalid table name in column name.");
+            log_debug("Invalid table name in column name.");
             return SORM_INVALID_COLUMN_NAME;
         }
     }
@@ -508,7 +507,7 @@ static inline int _column_name_to_index_in_tables(
 
         (*column_index) = ALL_INDEXES;
 
-        debug("talbe_index = %d, column_index = ALL_INDEXES",
+        log_debug("talbe_index = %d, column_index = ALL_INDEXES",
                 (*table_index));
 
         return SORM_OK;
@@ -524,7 +523,7 @@ static inline int _column_name_to_index_in_tables(
                     {
                         (*column_index) = j;
                         (*table_index) = i;
-                        debug("table_index = %d, column_index = %d",
+                        log_debug("table_index = %d, column_index = %d",
                                 (*table_index), (*column_index));
                         return SORM_OK;
                     }
@@ -538,9 +537,9 @@ static inline int _column_name_to_index_in_tables(
                             _column_name) == 0)
                 {
                     (*column_index) = i;
-                    debug("table_index = %d, column_index = %d",
+                    log_debug("table_index = %d, column_index = %d",
                             (*table_index), (*column_index));
-                    //debug("Success return.");
+                    //log_debug("Success return.");
                     return SORM_OK;
                 }
             }
@@ -581,13 +580,13 @@ static inline int _columns_name_to_select_columns(
     assert(columns_name != NULL);
     assert(select_columns_of_table != NULL);
 
-    //debug("Start.");
+    //log_debug("Start.");
     //
 
     column_name = _columns_name = mem_strdup(columns_name);
     if(column_name == NULL)
     {
-        debug("mem_strdup for columns_name fail");
+        log_debug("mem_strdup for columns_name fail");
         ret_val = SORM_NOMEM;
         goto RETURN;
     }
@@ -668,7 +667,7 @@ static inline int _columns_name_to_select_columns(
         }
     }while(delimiter != NULL);
     ret_val = SORM_OK;
-    //debug("Success return.");
+    //log_debug("Success return.");
 
 RETURN :
     if(_columns_name != NULL)
@@ -709,7 +708,7 @@ static inline int _parse_select_result(
     assert(column_indexes_in_result != NULL);
     assert(row != NULL);
 
-    //debug("Start.");
+    //log_debug("Start.");
     /* get data of the row*/
     for(i = 0; i < row->columns_num; i ++)
     {
@@ -719,75 +718,12 @@ static inline int _parse_select_result(
                     i, column_indexes_in_result[i]); 
             if(ret != SORM_OK)
             {
-                debug("_sqliter3_column error.");
+                log_debug("_sqliter3_column error.");
                 return ret;
             }
         }
     }
-    //debug("Success return.");
-    return SORM_OK;
-}
-
-/**
- * @brief: construct a filter for PK value
- *
- * @param table_desc: 
- * @param PK_val: 
- * @param filter: 
- *
- * @return: error code
- */
-static inline int _construct_PK_filter(
-        const sorm_table_descriptor_t *table_desc, const void *PK_val, 
-        char *filter)
-{
-    const sorm_column_descriptor_t *column_desc;
-    int offset;
-
-    if(table_desc->PK_index == SORM_NO_PK)
-    {
-        error("There is not Primary Key in table(%s)",
-                table_desc->name);
-        return SORM_NOPK;
-    }
-
-    if(table_desc->PK_index >= table_desc->columns_num)
-    {
-        error("the table's PK_index(%d) is out of range(%d)",
-                table_desc->PK_index, table_desc->columns_num);
-        assert(0);
-    }
-
-    //debug("Start.");
-
-    column_desc = &table_desc->columns[table_desc->PK_index];
-
-    switch(column_desc->type)
-    {
-        case SORM_TYPE_INT :
-            offset = snprintf(filter, SQL_STMT_MAX_LEN + 1, "%s = %d", 
-                    column_desc->name, *((int32_t*)PK_val));
-            break;
-        case SORM_TYPE_TEXT :
-            offset = snprintf(filter, SQL_STMT_MAX_LEN + 1, "%s = %s", 
-                    column_desc->name, (char*)PK_val);
-            break;
-        case SORM_TYPE_DOUBLE :
-            offset = snprintf(filter, SQL_STMT_MAX_LEN + 1, "%s = %f", 
-                    column_desc->name, *((double*)PK_val));
-            break;
-        default :
-            debug("unknow sorm type : %d", column_desc->type);
-            return SORM_INVALID_TYPE;
-    }
-
-    if(offset < 0 || offset > SQL_STMT_MAX_LEN)
-    {
-        debug("snprintf error while constructing filter, "
-                "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
-        return SORM_TOO_LONG;
-    }
-
+    //log_debug("Success return.");
     return SORM_OK;
 }
 
@@ -808,7 +744,7 @@ static inline int _construct_column_filter(
     const sorm_column_descriptor_t *column_desc;
     int offset;
 
-    debug("Start.");
+    log_debug("Start.");
     
     assert(table_desc != NULL);
     assert(column_value != NULL);
@@ -831,17 +767,17 @@ static inline int _construct_column_filter(
                     column_desc->name, *((double*)column_value));
             break;
         default :
-            debug("unknow sorm type : %d", column_desc->type);
+            log_debug("unknow sorm type : %d", column_desc->type);
             return SORM_INVALID_TYPE;
     }
 
     if(offset < 0 || offset > SQL_STMT_MAX_LEN)
     {
-        debug("snprintf error while constructing filter, "
+        log_debug("snprintf error while constructing filter, "
                 "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
         return SORM_TOO_LONG;
     }
-    debug("End.");
+    log_debug("End.");
 
     return SORM_OK;
 }
@@ -867,19 +803,19 @@ static inline int _construct_select_stmt(
     assert(columns_name != NULL);
     assert(offset != NULL);
 
-    //debug("Start.");
+    //log_debug("Start.");
 
     (*offset) = ret = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1, 
             "SELECT %s FROM %s", columns_name, table_name);
     if(ret < 0 || (*offset) > SQL_STMT_MAX_LEN)
     {
-        debug("snprintf error while constructing sql statment, "
+        log_debug("snprintf error while constructing sql statment, "
                 "snprintf length(%d) > max length(%d)", 
                 (*offset), SQL_STMT_MAX_LEN);
         return SORM_TOO_LONG;
     }
 
-    //debug("Success return.");
+    //log_debug("Success return.");
     return SORM_OK;
 }
 
@@ -897,7 +833,7 @@ static inline int _construct_filter_stmt(
 {
     int ret;
 
-    //debug("Start.");
+    //log_debug("Start.");
 
     if(filter != NULL)
     {
@@ -906,14 +842,14 @@ static inline int _construct_filter_stmt(
         (*offset) += ret;
         if(ret < 0 || (*offset) > SQL_STMT_MAX_LEN)
         {
-            debug("snprintf error while constructing sql statment, "
+            log_debug("snprintf error while constructing sql statment, "
                     "snprintf length(%d) > max length(%d)", 
                     *offset, SQL_STMT_MAX_LEN);
             return SORM_TOO_LONG;
         }
     }
 
-    //debug("Success return.");
+    //log_debug("Success return.");
     return SORM_OK;
 }
 
@@ -931,34 +867,21 @@ int sorm_open(
     sorm_connection_t *_connection = NULL;
     int ret;
 
-    ret = zlog_init("/etc/zlog_noahark.conf");
-    if(ret != 0)
-    {
-        printf("zlog init fail.\n");
-        return -1;
-    }
-    zlog_category = zlog_get_category("SORM");
-    if(zlog_category == NULL)
-    {
-        zlog_fini();
-        printf("zlog_get_category fail.\n");
-        return -1;
-    }
 
-    //debug("Start");
+    //log_debug("Start");
 
     if(path == NULL)
     {
-        debug("Param path is NULL");
+        log_debug("Param path is NULL");
         return SORM_ARG_NULL;
     }
 
-    debug("open db path(%s)", path);
+    log_debug("open db path(%s)", path);
 
     _connection = mem_malloc(sizeof(sorm_connection_t));
     if(_connection == NULL)
     {
-        debug("mem_malloc for _connection fail");
+        log_debug("mem_malloc for _connection fail");
         return SORM_NOMEM;
     }
     memset(_connection, 0, sizeof(sorm_connection_t));
@@ -966,7 +889,7 @@ int sorm_open(
     _connection->db_file_path = mem_strdup(path);
     if(_connection->db_file_path == NULL)
     {
-        debug("mem_strdup for database file path fail");
+        log_debug("mem_strdup for database file path fail");
         return SORM_NOMEM;
     }
     _connection->db = db;
@@ -975,13 +898,13 @@ int sorm_open(
     ret = sqlite3_open(path, &_connection->sqlite3_handle);
     if(ret != SQLITE_OK)
     {
-        debug("sqlite3_open fail");
+        log_debug("sqlite3_open fail");
         return SORM_DB_ERROR;
     }
 
     *connection = _connection;
 
-    //debug("Success return");
+    //log_debug("Success return");
     return SORM_OK;
 }
 
@@ -996,12 +919,12 @@ int sorm_create_table(
 
     if(conn == NULL)
     {
-        error("Param conn is NULL.");
+        log_error("Param conn is NULL.");
         return SORM_ARG_NULL;
     }
     if(table_desc == NULL)
     {
-        error("Param table_desc is NULL.");
+        log_error("Param table_desc is NULL.");
         return SORM_ARG_NULL;
     }
 
@@ -1009,7 +932,7 @@ int sorm_create_table(
             "CREATE TABLE %s(", table_desc->name);
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
-        debug("snprintf error while constructing sql statment, "
+        log_debug("snprintf error while constructing sql statment, "
                 "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
         return SORM_TOO_LONG;
     }
@@ -1023,7 +946,7 @@ int sorm_create_table(
         offset += ret;
         if(ret < 0 || offset > SQL_STMT_MAX_LEN)
         {
-            debug("snprintf error while constructing sql statment, "
+            log_debug("snprintf error while constructing sql statment, "
                     "snprintf length(%d) > max length(%d)", 
                     offset, SQL_STMT_MAX_LEN);
             return SORM_TOO_LONG;
@@ -1055,7 +978,7 @@ int sorm_create_table(
         offset += ret;
         if(ret < 0 || offset > SQL_STMT_MAX_LEN)
         {
-            debug("snprintf error while constructing sql "
+            log_debug("snprintf error while constructing sql "
                     "statment, snprintf length(%d) > max length(%d)", 
                     offset, SQL_STMT_MAX_LEN);
             return SORM_TOO_LONG;
@@ -1063,13 +986,13 @@ int sorm_create_table(
     }
     sql_stmt[offset - 1] = ')';
 
-    debug("prepare stmt : %s", sql_stmt);
+    log_debug("prepare stmt : %s", sql_stmt);
     ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
             SQL_STMT_MAX_LEN, &stmt_handle, NULL);
 
     if(ret != SQLITE_OK)
     {
-        debug("sqlite3_prepare error : %s", 
+        log_debug("sqlite3_prepare error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
@@ -1082,20 +1005,20 @@ int sorm_create_table(
 
     if(ret != SQLITE_DONE)
     {
-        debug("sqlite3_step error : %s", 
+        log_debug("sqlite3_step error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         ret_val = SORM_DB_ERROR;
         goto DB_FINALIZE;
     }
 
-    //debug("Success return");
+    //log_debug("Success return");
     ret_val = SORM_OK;
 
 DB_FINALIZE :
     ret = sqlite3_finalize(stmt_handle);
     if(ret != SQLITE_OK)
     {
-        debug("sqlite3_finalize error : %s", 
+        log_debug("sqlite3_finalize error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
 
@@ -1115,12 +1038,12 @@ int sorm_delete_table(
     
     if(conn == NULL)
     {
-        error("Param conn is NULL.");
+        log_error("Param conn is NULL.");
         return SORM_ARG_NULL;
     }
     if(table_desc == NULL)
     {
-        error("Param table_desc is NULL.");
+        log_error("Param table_desc is NULL.");
         return SORM_ARG_NULL;
     }
 
@@ -1128,18 +1051,18 @@ int sorm_delete_table(
             "DROP TABLE %s", table_desc->name);
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
-        debug("snprintf error while constructing sql statment, "
+        log_debug("snprintf error while constructing sql statment, "
                 "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
         return SORM_TOO_LONG;
     }
 
-    debug("prepare stmt : %s", sql_stmt);
+    log_debug("prepare stmt : %s", sql_stmt);
     ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
             SQL_STMT_MAX_LEN, &stmt_handle, NULL);
 
     if(ret != SQLITE_OK)
     {
-        debug("sqlite3_prepare error : %s", 
+        log_debug("sqlite3_prepare error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
@@ -1152,20 +1075,20 @@ int sorm_delete_table(
 
     if(ret != SQLITE_DONE)
     {
-        debug("sqlite3_step error : %s", 
+        log_debug("sqlite3_step error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         ret_val = SORM_DB_ERROR;
         goto DB_FINALIZE;
     }
 
-    //debug("Success return");
+    //log_debug("Success return");
     ret_val = SORM_OK;
 
 DB_FINALIZE :
     ret = sqlite3_finalize(stmt_handle);
     if(ret != SQLITE_OK)
     {
-        debug("sqlite3_finalize error : %s", 
+        log_debug("sqlite3_finalize error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
 
@@ -1192,19 +1115,19 @@ sorm_new_array(
     sorm_table_descriptor_t *table_desc_pos = NULL;
     int i;
 
-    //debug("Start");
-    debug("Array size(%d)", n);
+    //log_debug("Start");
+    log_debug("Array size(%d)", n);
 
     if(init_table_desc == NULL)
     {
-        error("Param init_table_desc is NULL");
+        log_error("Param init_table_desc is NULL");
         return NULL;
     }
 
     table_desc = mem_malloc(init_table_desc->size * n);
     if(table_desc == NULL)
     {
-        debug("mem_malloc fail");
+        log_debug("mem_malloc fail");
         return NULL;
     }
     memset(table_desc, 0, init_table_desc->size * n);
@@ -1216,7 +1139,7 @@ sorm_new_array(
         *table_desc_pos = *init_table_desc;
     }
 
-    //debug("Success return");
+    //log_debug("Success return");
     return table_desc;
 }
 void sorm_free(
@@ -1225,14 +1148,14 @@ void sorm_free(
     int i;
     //char **txt;
 
-    //debug("Start");
+    //log_debug("Start");
 
     if(table_desc != NULL)
     {
         mem_free(table_desc);
     }
 
-    //debug("Success return");
+    //log_debug("Success return");
 
 }
 
@@ -1246,12 +1169,12 @@ int sorm_set_column_value(
 
     if(table_desc == NULL)
     {
-        error("Param table_desc is NULL.");
+        log_error("Param table_desc is NULL.");
         return SORM_ARG_NULL;
     }
     if(value == NULL)
     {
-        error("Param value_desc is NULL.");
+        log_error("Param value_desc is NULL.");
         return SORM_ARG_NULL;
     }
 
@@ -1270,7 +1193,7 @@ int sorm_set_column_value(
                 text = mem_strdup((char *)value);
                 if(text == NULL)
                 {
-                    error("mem_strdup for column value fail.");
+                    log_error("mem_strdup for column value fail.");
                     return SORM_NOMEM;
                 }
                 *(char **)((char*)table_desc + column_desc->offset) = text; 
@@ -1281,14 +1204,14 @@ int sorm_set_column_value(
                 offset = ret;
                 if(ret < 0 || offset > column_desc->text_max_len)
                 {
-                    error("get too long text from db, "
+                    log_error("get too long text from db, "
                             "length(%d) > max length(%d)", offset, 
                             column_desc->text_max_len);
                     return SORM_TOO_LONG;
                 }
             }else
             {
-                error("unknow sorm mem : %d", column_desc->mem);
+                log_error("unknow sorm mem : %d", column_desc->mem);
                 return SORM_INVALID_MEM;
             }
             break;
@@ -1297,7 +1220,7 @@ int sorm_set_column_value(
                 *(double*)value;
             break;
         default :
-            error("unknow sorm type : %d", column_desc->type);
+            log_error("unknow sorm type : %d", column_desc->type);
             return SORM_INVALID_TYPE;
     }
 
@@ -1321,11 +1244,11 @@ int sorm_save(
     int offset;
     int ret, ret_val;
     int bind_index, i;
-    //debug("Start");
+    //log_debug("Start");
 
     if(table_desc == NULL)
     {
-        error("Param desc is NULL");
+        log_error("Param desc is NULL");
         return SORM_ARG_NULL;
     }
 
@@ -1334,7 +1257,7 @@ int sorm_save(
             "REPLACE INTO %s (", table_desc->name);
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
-        error("snprintf error while constructing sql statment, "
+        log_error("snprintf error while constructing sql statment, "
                 "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
         return SORM_TOO_LONG;
     }
@@ -1348,7 +1271,7 @@ int sorm_save(
             offset += ret;
             if(ret < 0 || offset > SQL_STMT_MAX_LEN)
             {
-                error("snprintf error while constructing sql statment, "
+                log_error("snprintf error while constructing sql statment, "
                         "snprintf length(%d) > max length(%d)", 
                         offset, SQL_STMT_MAX_LEN);
                 return SORM_TOO_LONG;
@@ -1362,7 +1285,7 @@ int sorm_save(
     offset += ret;
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
-        error("snprintf error while constructing sql statment, "
+        log_error("snprintf error while constructing sql statment, "
                 "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
         return SORM_TOO_LONG;
     }
@@ -1376,7 +1299,7 @@ int sorm_save(
             offset += ret;
             if(ret < 0 || offset > SQL_STMT_MAX_LEN)
             {
-                error("snprintf error while constructing sql statment, "
+                log_error("snprintf error while constructing sql statment, "
                         "snprintf length(%d) > max length(%d)", 
                         offset, SQL_STMT_MAX_LEN);
                 return SORM_TOO_LONG;
@@ -1385,13 +1308,13 @@ int sorm_save(
     }
     sql_stmt[offset - 1] = ')';
 
-    debug("prepare stmt : %s", sql_stmt);
+    log_debug("prepare stmt : %s", sql_stmt);
     ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
             SQL_STMT_MAX_LEN, &stmt_handle, NULL);
 
     if(ret != SQLITE_OK)
     {
-        error("sqlite3_prepare error : %s", 
+        log_error("sqlite3_prepare error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
@@ -1405,7 +1328,7 @@ int sorm_save(
                     conn, stmt_handle, table_desc, i, bind_index);
             if(ret != SORM_OK)
             {
-                debug("_sqlite3_column_bind error.");
+                log_debug("_sqlite3_column_bind error.");
                 ret_val = ret;
                 goto DB_FINALIZE;
             }
@@ -1421,20 +1344,20 @@ int sorm_save(
 
     if(ret != SQLITE_DONE)
     {
-        debug("sqlite3_step error : %s", 
+        log_debug("sqlite3_step error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         ret_val = SORM_DB_ERROR;
         goto DB_FINALIZE;
     }
 
-    //debug("Success return");
+    //log_debug("Success return");
     ret_val = SORM_OK;
 
 DB_FINALIZE :
     ret = sqlite3_finalize(stmt_handle);
     if(ret != SQLITE_OK)
     {
-        debug("sqlite3_finalize error : %s", 
+        log_debug("sqlite3_finalize error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
 
@@ -1452,11 +1375,11 @@ int sorm_delete(
     const sorm_column_descriptor_t *column_desc = NULL;
     int bind_index, i;
 
-    //debug("Start");
+    //log_debug("Start");
 
     if(table_desc == NULL)
     {
-        error("Param desc is NULL");
+        log_error("Param desc is NULL");
         return SORM_ARG_NULL;
     }
 
@@ -1467,7 +1390,7 @@ int sorm_delete(
             "DELETE FROM %s WHERE ", table_desc->name);
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
-        debug("snprintf error while constructing sql statment");
+        log_debug("snprintf error while constructing sql statment");
         return SORM_TOO_LONG;
     }
 
@@ -1480,7 +1403,7 @@ int sorm_delete(
             offset += ret;
             if(ret < 0 || offset > SQL_STMT_MAX_LEN)
             {
-                debug(
+                log_debug(
                         "snprintf error while constructing sql statment, "
                         "snprintf length(%d) > max length(%d)", 
                         offset, SQL_STMT_MAX_LEN);
@@ -1490,13 +1413,13 @@ int sorm_delete(
     }
     sql_stmt[offset - 4] = '\0';
 
-    debug("prepare stmt : %s", sql_stmt);
+    log_debug("prepare stmt : %s", sql_stmt);
     ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
             SQL_STMT_MAX_LEN, &stmt_handle, NULL);
 
     if(ret != SQLITE_OK)
     {
-        debug("sqlite3_prepare error : %s", 
+        log_debug("sqlite3_prepare error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
@@ -1510,7 +1433,7 @@ int sorm_delete(
                     conn, stmt_handle, table_desc, i, bind_index);
             if(ret != SORM_OK)
             {
-                debug("_sqlite3_column_bind error");
+                log_debug("_sqlite3_column_bind error");
                 ret_val = ret;
                 goto DB_FINALIZE;
             }
@@ -1526,19 +1449,19 @@ int sorm_delete(
 
     if(ret != SQLITE_DONE)
     {
-        debug("sqlite3_step error : %s", 
+        log_debug("sqlite3_step error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
 
-    //debug("Success return");
+    //log_debug("Success return");
     ret_val = SORM_OK;
 
 DB_FINALIZE :
     ret = sqlite3_finalize(stmt_handle);
     if(ret != SQLITE_OK)
     {
-        debug("sqlite3_finalize error : %s", 
+        log_debug("sqlite3_finalize error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
 
@@ -1558,35 +1481,36 @@ DB_FINALIZE :
     return ret_val;
 }
 
-int sorm_delete_by_PK(
+int sorm_delete_by_column(
         const sorm_connection_t *conn, const sorm_table_descriptor_t *table_desc,
-        const void *PK_val)
+        int column_index, const void *column_value)
 {
     const sorm_column_descriptor_t *column_desc = NULL;
 
     char filter[SQL_STMT_MAX_LEN + 1];
     int ret;
 
-    //debug("Start.");
+    //log_debug("Start.");
 
     if(table_desc == NULL)
     {
-        debug("Param table_desc is NULL");
+        log_debug("Param table_desc is NULL");
         assert(0);
     }
-    if(PK_val == NULL)
+    if(column_value == NULL)
     {
-        debug("Param PK_val is NULL");
+        log_debug("Param column_val is NULL");
         assert(0);
     }
 
-    if(SORM_OK != (ret = _construct_PK_filter(table_desc, PK_val, filter)))
+    if(SORM_OK != (ret = _construct_column_filter(table_desc, column_index, 
+                    column_value, filter)))
     {
-        debug("Conster select filter fail.");
+        log_debug("Conster select filter fail.");
         return ret;
     }
 
-    debug("Construct filter : %s", filter);
+    log_debug("Construct filter : %s", filter);
 
     return sorm_delete_by(conn, table_desc, filter);
 }
@@ -1599,16 +1523,16 @@ int sorm_delete_by(
     int offset, ret, ret_val;
     sqlite3_stmt *stmt_handle = NULL;
 
-    //debug("Start.");
+    //log_debug("Start.");
 
     if(conn == NULL)
     {
-        debug("Param conn is NULL");
+        log_debug("Param conn is NULL");
         return SORM_ARG_NULL;
     }
     if(table_desc == NULL)
     {
-        debug("Param desc is NULL");
+        log_debug("Param desc is NULL");
         return SORM_ARG_NULL;
     }
 
@@ -1617,7 +1541,7 @@ int sorm_delete_by(
             table_desc->name);
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
-        debug("snprintf error while constructing sql statment, "
+        log_debug("snprintf error while constructing sql statment, "
                 "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
         return SORM_TOO_LONG;
     }
@@ -1628,21 +1552,21 @@ int sorm_delete_by(
         offset += ret;
         if(ret < 0 || offset > SQL_STMT_MAX_LEN)
         {
-            debug("snprintf error while constructing sql statment, "
+            log_debug("snprintf error while constructing sql statment, "
                     "snprintf length(%d) > max length(%d)", 
                     offset, SQL_STMT_MAX_LEN);
             return SORM_TOO_LONG;
         }
     }
 
-    debug("prepare stmt : %s", sql_stmt);
+    log_debug("prepare stmt : %s", sql_stmt);
 
     /* sqlite3_prepare */
     ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
             SQL_STMT_MAX_LEN, &stmt_handle, NULL);
     if(ret != SQLITE_OK)
     {
-        debug("sqlite3_prepare error : %s", 
+        log_debug("sqlite3_prepare error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
@@ -1655,38 +1579,25 @@ int sorm_delete_by(
 
     if(ret != SQLITE_DONE)
     {
-        debug("sqlite3_step error(%d) : %s", 
+        log_debug("sqlite3_step error(%d) : %s", 
                 ret, sqlite3_errmsg(conn->sqlite3_handle));
         ret_val = SORM_DB_ERROR;
         goto DB_FINALIZE;
     }
 
-    //debug("Success return");
+    //log_debug("Success return");
     ret_val = SORM_OK;
 
 DB_FINALIZE:
     ret = sqlite3_finalize(stmt_handle);
     if(ret != SQLITE_OK)
     {
-        debug("sqlite3_finalize error : %s", 
+        log_debug("sqlite3_finalize error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
 
     return ret_val;
-}
-
-int sorm_select_one_by(
-        const sorm_connection_t *conn, const sorm_table_descriptor_t *desc, 
-        const char *columns_name, const char *filter, 
-        sorm_table_descriptor_t **get_row)
-{
-    int n = 1;
-
-    //debug("Start.");
-
-    return sorm_select_some_array_by(
-            conn, desc, columns_name, filter, &n, get_row);
 }
 
 int sorm_select_one_by_column(
@@ -1700,14 +1611,14 @@ int sorm_select_one_by_column(
 
     if(column_value == NULL)
     {
-        debug("Param column_value is NULL");
+        log_debug("Param column_value is NULL");
         return SORM_ARG_NULL;
     }
 
     ret = _construct_column_filter(table_desc, column_index, column_value, filter);
     if(SORM_OK != ret)
     {
-        debug("Conster select filter fail.");
+        log_debug("Conster select filter fail.");
         return ret;
     }
 
@@ -1740,24 +1651,24 @@ static int _select(
 
     if(conn == NULL)
     {
-        debug("Param conn is NULL");
+        log_debug("Param conn is NULL");
         return SORM_ARG_NULL;
     }
     if(columns_name == NULL)
     {
-        debug("Param columns_name is NULL");
+        log_debug("Param columns_name is NULL");
         return SORM_ARG_NULL;
     }
     if(rows_num == NULL)
     {
-        debug("Param rows_num is NULL");
+        log_debug("Param rows_num is NULL");
         return SORM_ARG_NULL;
     }
 
     select_columns_of_tables = mem_malloc(sizeof(select_columns_t) * tables_num);
     if(select_columns_of_tables == NULL)
     {
-        error("mem_malloc fail.");
+        log_error("mem_malloc fail.");
         ret_val = SORM_NOMEM;
         goto RETURN;
     }
@@ -1768,7 +1679,7 @@ static int _select(
             malloc(sizeof(int) * tables_desc[i]->columns_num);
         if(select_columns_of_tables[i].indexes_in_result == NULL)
         {
-            error("mem_malloc fail.");
+            log_error("mem_malloc fail.");
             ret_val = SORM_NOMEM;
             goto RETURN;
         }
@@ -1783,7 +1694,7 @@ static int _select(
             columns_name, &offset);
     if(ret != SORM_OK)
     {
-        debug("_construct_select_stmt error.");
+        log_debug("_construct_select_stmt error.");
         return ret;
     }
 
@@ -1794,7 +1705,7 @@ static int _select(
             case SORM_INNER_JOIN : join_str = "INNER JOIN"; break;
             case SORM_LEFT_JOIN  : join_str =  "LEFT JOIN"; break;
             default :
-                                   error("Invalid join type.");
+                                   log_error("Invalid join type.");
                                    assert(0);
         }
         offset += (ret = snprintf(sql_stmt + offset, 
@@ -1804,7 +1715,7 @@ static int _select(
                     tables_desc[1]->name, tables_column_name[1]));
         if(ret < 0 || offset > SQL_STMT_MAX_LEN)
         {
-            debug("snprintf error while constructing filter, "
+            log_debug("snprintf error while constructing filter, "
                     "snprintf length(%d) > max length(%d)", 
                     offset, SQL_STMT_MAX_LEN);
             return SORM_TOO_LONG;
@@ -1814,17 +1725,17 @@ static int _select(
     ret = _construct_filter_stmt(sql_stmt, filter, &offset);
     if(ret != SORM_OK)
     {
-        debug("_construct_filter_stmt error.");
+        log_debug("_construct_filter_stmt error.");
         return ret;
     }
 
     /* sqlite3_prepare */
-    debug("prepare stmt : %s", sql_stmt);
+    log_debug("prepare stmt : %s", sql_stmt);
     ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
             SQL_STMT_MAX_LEN, &stmt_handle, NULL);
     if(ret != SQLITE_OK)
     {
-        error("sqlite3_prepare error : %s", 
+        log_error("sqlite3_prepare error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
@@ -1834,7 +1745,7 @@ static int _select(
             select_columns_of_tables);
     if(ret != SORM_OK)
     {
-        error("_columns_name_to_select_columns fail.");
+        log_error("_columns_name_to_select_columns fail.");
         ret_val = ret;
         goto DB_FINALIZE;
     }
@@ -1848,7 +1759,7 @@ DB_FINALIZE:
     ret = sqlite3_finalize(stmt_handle);
     if(ret != SQLITE_OK)
     {
-        debug("sqlite3_finalize error : %s", 
+        log_debug("sqlite3_finalize error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         ret_val = SORM_DB_ERROR;
     }
@@ -1867,7 +1778,7 @@ RETURN :
         }
     }
 
-    debug("select row number(%d)", *rows_num);
+    log_debug("select row number(%d)", *rows_num);
 
     if((ret_val == SORM_OK) && ((*rows_num) == 0))
     {
@@ -1904,7 +1815,7 @@ int _select_some_array_core(
             rows_of_tables[i] = sorm_new_array(tables_desc[i], max_rows_num);
             if(rows_of_tables[i] == NULL)
             {
-                error("new sorm error.");
+                log_error("new sorm error.");
                 ret_val = SORM_NOMEM;
                 goto RETURN;
             }
@@ -1932,13 +1843,13 @@ int _select_some_array_core(
                     if(ret != SORM_OK)
                     {
                         ret_val = ret;
-                        debug("_parse_select_result error."); 
+                        log_debug("_parse_select_result error."); 
                         goto RETURN;
                     }
                 }
             }
             (*rows_num)++;
-            debug("now get : %d", *rows_num);
+            log_debug("now get : %d", *rows_num);
         }else
         {
             break;
@@ -1947,7 +1858,7 @@ int _select_some_array_core(
 
     if((step_ret != SQLITE_DONE) && (step_ret != SQLITE_ROW))
     {
-        error("sqlite3_step error(%d) : %s", 
+        log_error("sqlite3_step error(%d) : %s", 
                 step_ret, sqlite3_errmsg(conn->sqlite3_handle));
         ret_val = SORM_DB_ERROR;
         goto RETURN;
@@ -1996,7 +1907,7 @@ int _select_some_list_core(
             rows_of_tables[i] = mem_malloc(sizeof(sorm_list_t));
             if(rows_of_tables[i] == NULL)
             {
-                error("malloc for sorm_list error.");
+                log_error("malloc for sorm_list error.");
                 ret_val = SORM_NOMEM;
                 goto RETURN;
             }
@@ -2020,7 +1931,7 @@ int _select_some_list_core(
                     list_entry = mem_malloc(sizeof(sorm_list_t));
                     if(list_entry == NULL)
                     {
-                        error("mem_malloc for list_entry fail.");
+                        log_error("mem_malloc for list_entry fail.");
                         ret_val = SORM_NOMEM;
                         goto RETURN;
                     }
@@ -2028,7 +1939,7 @@ int _select_some_list_core(
                     list_entry->data = sorm_new(tables_desc[i]);
                     if(list_entry->data == NULL)
                     {
-                        debug("New sorm error");
+                        log_debug("New sorm error");
                         ret_val =  SORM_NOMEM;
                         goto RETURN;
                     }
@@ -2039,14 +1950,14 @@ int _select_some_list_core(
                     if(ret != SORM_OK)
                     {
                         ret_val = ret;
-                        debug("_parse_select_result error."); 
+                        log_debug("_parse_select_result error."); 
                         goto RETURN;
                     }
                 }
             }
 
             (*rows_num)++;
-            debug("now get : %d", *rows_num);
+            log_debug("now get : %d", *rows_num);
         }else
         {
             break;
@@ -2055,7 +1966,7 @@ int _select_some_list_core(
 
     if((step_ret != SQLITE_DONE) && (step_ret != SQLITE_ROW))
     {
-        error("sqlite3_step error(%d) : %s", 
+        log_error("sqlite3_step error(%d) : %s", 
                 step_ret, sqlite3_errmsg(conn->sqlite3_handle));
         ret_val = SORM_DB_ERROR;
         goto RETURN;
@@ -2104,7 +2015,7 @@ int _select_all_list_core(
             rows_of_tables[i] = mem_malloc(sizeof(sorm_list_t));
             if(rows_of_tables[i] == NULL)
             {
-                error("malloc for sorm_list error.");
+                log_error("malloc for sorm_list error.");
                 ret_val = SORM_NOMEM;
                 goto RETURN;
             }
@@ -2127,7 +2038,7 @@ int _select_all_list_core(
                     list_entry = mem_malloc(sizeof(sorm_list_t));
                     if(list_entry == NULL)
                     {
-                        error("mem_malloc for list_entry fail.");
+                        log_error("mem_malloc for list_entry fail.");
                         ret_val = SORM_NOMEM;
                         goto RETURN;
                     }
@@ -2135,7 +2046,7 @@ int _select_all_list_core(
                     list_entry->data = sorm_new(tables_desc[i]);
                     if(list_entry->data == NULL)
                     {
-                        debug("New sorm error");
+                        log_debug("New sorm error");
                         ret_val =  SORM_NOMEM;
                         goto RETURN;
                     }
@@ -2146,14 +2057,14 @@ int _select_all_list_core(
                     if(ret != SORM_OK)
                     {
                         ret_val = ret;
-                        debug("_parse_select_result error."); 
+                        log_debug("_parse_select_result error."); 
                         goto RETURN;
                     }
                 }
             }
 
             (*rows_num)++;
-            debug("now get : %d", *rows_num);
+            log_debug("now get : %d", *rows_num);
         }else
         {
             break;
@@ -2162,7 +2073,7 @@ int _select_all_list_core(
 
     if(ret != SQLITE_DONE)
     {
-        error("sqlite3_step error(%d) : %s", 
+        log_error("sqlite3_step error(%d) : %s", 
                 ret, sqlite3_errmsg(conn->sqlite3_handle));
         ret_val = SORM_DB_ERROR;
         goto RETURN;
@@ -2192,7 +2103,7 @@ int sorm_select_some_array_by(
     sorm_table_descriptor_t *rows;
     int is_tables_select;
 
-    //debug("Start.");
+    //log_debug("Start.");
     is_tables_select = (rows_p == NULL) ? 0 : 1;
     ret = _select(_select_some_array_core,
             conn, columns_name, 1, &table_desc, 
@@ -2241,7 +2152,7 @@ int sorm_select_all_array_by(
     sorm_list_t *row_head = NULL, **row_head_p = NULL;
     sorm_table_descriptor_t *_get_row = NULL;
 
-    //debug("Start.");
+    //log_debug("Start.");
 
     if(get_row != NULL)
     {
@@ -2258,7 +2169,7 @@ int sorm_select_all_array_by(
     }
     if((*n) == 0)
     {
-        debug("NOEXIST");
+        log_debug("NOEXIST");
         return SORM_NOEXIST;
     }
 
@@ -2267,7 +2178,7 @@ int sorm_select_all_array_by(
         _get_row = sorm_new_array(table_desc, *n);
         if(_get_row == NULL)
         {
-            debug("New sorm array error");
+            log_debug("New sorm array error");
             _list_free(row_head, mem_free);
             return SORM_NOMEM;
         }
@@ -2275,7 +2186,7 @@ int sorm_select_all_array_by(
         *get_row = _get_row;
     }
 
-    //debug("Success return");
+    //log_debug("Success return");
     return SORM_OK;
 }
 
@@ -2423,14 +2334,14 @@ int sorm_select_all_array_by_join(
         return ret;
     }
 
-    debug("get row number : %d\n", (*rows_num));
+    log_debug("get row number : %d\n", (*rows_num));
 
     if((table1_rows != NULL) && (table1_row_head != NULL))
     {
         _table1_rows = sorm_new_array(table1_desc, *rows_num);
         if(_table1_rows == NULL)
         {
-            debug("New sorm array error");
+            log_debug("New sorm array error");
             return SORM_NOMEM;
         }
         _list_cpy_free(table1_desc, table1_row_head, *rows_num, 
@@ -2442,7 +2353,7 @@ int sorm_select_all_array_by_join(
         _table2_rows = sorm_new_array(table2_desc, *rows_num);
         if(_table2_rows == NULL)
         {
-            debug("New sorm array error");
+            log_debug("New sorm array error");
             return SORM_NOMEM;
         }
         _list_cpy_free(table2_desc, table2_row_head, *rows_num,
@@ -2504,10 +2415,10 @@ int sorm_begin_transaction(sorm_connection_t *conn)
 
     if(conn == NULL)
     {
-        debug("Param conn is NULL");
+        log_debug("Param conn is NULL");
         return SORM_ARG_NULL;
     }
-    //debug("Start");
+    //log_debug("Start");
 
     if(conn->transaction_num == 0) /* first transaction */
     {
@@ -2517,19 +2428,19 @@ int sorm_begin_transaction(sorm_connection_t *conn)
                     "BEGIN TRANSACTION");
             if(ret < 0 || offset > SQL_STMT_MAX_LEN)
             {
-                debug("snprintf error while constructing sql "
+                log_debug("snprintf error while constructing sql "
                         "statment, snprintf length(%d) > max length(%d)", 
                         offset, SQL_STMT_MAX_LEN);
                 return SORM_TOO_LONG;
             }
 
-            debug("prepare stmt : %s", sql_stmt);
+            log_debug("prepare stmt : %s", sql_stmt);
             ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
                     SQL_STMT_MAX_LEN, &stmt_handle, NULL);
 
             if(ret != SQLITE_OK)
             {
-                debug("sqlite3_prepare error : %s", 
+                log_debug("sqlite3_prepare error : %s", 
                         sqlite3_errmsg(conn->sqlite3_handle));
                 return SORM_DB_ERROR;
             }
@@ -2548,7 +2459,7 @@ int sorm_begin_transaction(sorm_connection_t *conn)
 
         if(ret != SQLITE_DONE)
         {
-            debug("sqlite3_step error : %s", 
+            log_debug("sqlite3_step error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             ret_val = SORM_DB_ERROR;
         }
@@ -2559,13 +2470,13 @@ DB_FINALIZE :
         if(ret_val == SORM_OK)
         {
             conn->transaction_num ++; //only ++ when success return
-            //debug("Success return");
+            //log_debug("Success return");
         }
         return ret_val;
     }else
     {
         conn->transaction_num ++;
-        //debug("Success return");
+        //log_debug("Success return");
         return SORM_OK;
     }
 }
@@ -2577,17 +2488,17 @@ int sorm_commit_transaction(sorm_connection_t *conn)
     int offset;
     int ret, ret_val;
 
-    //debug("Start");
+    //log_debug("Start");
 
     if(conn == NULL)
     {
-        debug("Param conn is NULL");
+        log_debug("Param conn is NULL");
         return SORM_ARG_NULL;
     }
 
     if(conn->transaction_num == 0) /* commit transaction without begin before*/
     {
-        debug("Commit transaction without begin before.");
+        log_debug("Commit transaction without begin before.");
         return SORM_OK;
     }else if(conn->transaction_num == 1) /* last commit */
     {
@@ -2597,18 +2508,18 @@ int sorm_commit_transaction(sorm_connection_t *conn)
                     "COMMIT TRANSACTION");
             if(ret < 0 || offset > SQL_STMT_MAX_LEN)
             {
-                debug("snprintf error while constructing sql " 
+                log_debug("snprintf error while constructing sql " 
                         "statment, snprintf length(%d) > max length(%d)", 
                         offset, SQL_STMT_MAX_LEN);
                 return SORM_TOO_LONG;
             }
-            debug("prepare stmt : %s", sql_stmt);
+            log_debug("prepare stmt : %s", sql_stmt);
             ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
                     SQL_STMT_MAX_LEN, &stmt_handle, NULL);
 
             if(ret != SQLITE_OK)
             {
-                debug("sqlite3_prepare error : %s", 
+                log_debug("sqlite3_prepare error : %s", 
                         sqlite3_errmsg(conn->sqlite3_handle));
                 return SORM_DB_ERROR;
             }
@@ -2627,7 +2538,7 @@ int sorm_commit_transaction(sorm_connection_t *conn)
 
         if(ret != SQLITE_DONE)
         {
-            debug("sqlite3_step error : %s", 
+            log_debug("sqlite3_step error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             ret_val = SORM_DB_ERROR;
         }
@@ -2638,13 +2549,13 @@ DB_FINALIZE :
         if(ret_val == SORM_OK)
         {
             conn->transaction_num --; //only ++ when success return
-            //debug("Success return");
+            //log_debug("Success return");
         }
         return ret_val;
     }else
     {
         conn->transaction_num --;
-        //debug("Success return");
+        //log_debug("Success return");
         return SORM_OK;
     }
 }
@@ -2656,17 +2567,17 @@ int sorm_rollback_transaction(sorm_connection_t *conn)
     int offset;
     int ret, ret_val;
 
-    //debug("Start");
+    //log_debug("Start");
 
     if(conn == NULL)
     {
-        debug("Param conn is NULL");
+        log_debug("Param conn is NULL");
         return SORM_ARG_NULL;
     }
 
     if(conn->transaction_num == 0) /* commit transaction without begin before*/
     {
-        debug("Rollback transaction without begin before.");
+        log_debug("Rollback transaction without begin before.");
         return SORM_OK;
     }else if(conn->transaction_num == 1) /* last rollback */
     {
@@ -2674,18 +2585,18 @@ int sorm_rollback_transaction(sorm_connection_t *conn)
                 "ROLLBACK TRANSACTION");
         if(ret < 0 || offset > SQL_STMT_MAX_LEN)
         {
-            debug("snprintf error while constructing sql " 
+            log_debug("snprintf error while constructing sql " 
                     "statment, snprintf length(%d) > max length(%d)", 
                     offset, SQL_STMT_MAX_LEN);
             return SORM_TOO_LONG;
         }
-        debug("prepare stmt : %s", sql_stmt);
+        log_debug("prepare stmt : %s", sql_stmt);
         ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
                 SQL_STMT_MAX_LEN, &stmt_handle, NULL);
 
         if(ret != SQLITE_OK)
         {
-            debug("sqlite3_prepare error : %s", 
+            log_debug("sqlite3_prepare error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             return SORM_DB_ERROR;
         }
@@ -2698,7 +2609,7 @@ int sorm_rollback_transaction(sorm_connection_t *conn)
 
         if(ret != SQLITE_DONE)
         {
-            debug("sqlite3_step error : %s", 
+            log_debug("sqlite3_step error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             ret_val = SORM_DB_ERROR;
         }
@@ -2709,7 +2620,7 @@ DB_FINALIZE :
         ret = sqlite3_finalize(stmt_handle);
         if(ret != SQLITE_OK)
         {
-            debug("sqlite3_finalize error : %s", 
+            log_debug("sqlite3_finalize error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             return SORM_DB_ERROR;
 
@@ -2718,13 +2629,13 @@ DB_FINALIZE :
         if(ret_val == SORM_OK)
         {
             conn->transaction_num --; //only -- when success return
-            //debug("Success return");
+            //log_debug("Success return");
         }
         return ret_val;
     }else
     {
         conn->transaction_num --;
-        //debug("Success return");
+        //log_debug("Success return");
         return SORM_OK;
     }
 }
@@ -2737,12 +2648,12 @@ DB_FINALIZE :
 //
 //    if(conn == NULL)
 //    {
-//        debug("Param conn is NULL");
+//        log_debug("Param conn is NULL");
 //        return SORM_INVALID_NUM;
 //    }
 //    if(table_desc == NULL)
 //    {
-//        debug("Param desc is NULL");
+//        log_debug("Param desc is NULL");
 //        return SORM_INVALID_NUM;
 //    }
 //    
@@ -2753,24 +2664,24 @@ DB_FINALIZE :
 //            columns_name, &offset);
 //    if(ret != SORM_OK)
 //    {
-//        debug("_construct_select_stmt error.");
+//        log_debug("_construct_select_stmt error.");
 //        return ret;
 //    }
 //    ret = _construct_filter_stmt(sql_stmt, filter, &offset);
 //    if(ret != SORM_OK)
 //    {
-//        debug("_construct_filter_stmt error.");
+//        log_debug("_construct_filter_stmt error.");
 //        return ret;
 //    }
 //
-//    debug("prepare stmt : %s", sql_stmt);
+//    log_debug("prepare stmt : %s", sql_stmt);
 //
 //    /* sqlite3_prepare */
 //    ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
 //            SQL_STMT_MAX_LEN, &stmt_handle, NULL);
 //    if(ret != SQLITE_OK)
 //    {
-//        debug("sqlite3_prepare error : %s", 
+//        log_debug("sqlite3_prepare error : %s", 
 //                sqlite3_errmsg(conn->sqlite3_handle));
 //        return SORM_DB_ERROR;
 //    }
@@ -2785,7 +2696,7 @@ DB_FINALIZE :
 //        if(ret == SQLITE_ROW) //a new row
 //        {
 //            (*n)++;
-//            debug("now get row number(%d)", *n);
+//            log_debug("now get row number(%d)", *n);
 //            if(get_row_head != NULL)
 //            {
 //                ret = _parse_select_result(
@@ -2812,18 +2723,18 @@ int sorm_close(sorm_connection_t *conn)
 
     if(conn == NULL)
     {
-        debug("Param conn is NULL");
+        log_debug("Param conn is NULL");
         return SORM_ARG_NULL;
     }
 
-    //debug("Start");
+    //log_debug("Start");
     //finalize pre-prepared stmt
     if(conn->begin_trans_stmt != NULL)
     {
         ret = sqlite3_finalize(conn->begin_trans_stmt);
         if(ret != SQLITE_OK)
         {
-            debug("sqlite3_finalize error : %s", 
+            log_debug("sqlite3_finalize error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             return SORM_DB_ERROR;
         }
@@ -2831,11 +2742,11 @@ int sorm_close(sorm_connection_t *conn)
     }
     if(conn->commit_trans_stmt != NULL)
     {
-        debug("commit_trans_stmt finalize.");
+        log_debug("commit_trans_stmt finalize.");
         ret = sqlite3_finalize(conn->commit_trans_stmt);
         if(ret != SQLITE_OK)
         {
-            debug("sqlite3_finalize error : %s", 
+            log_debug("sqlite3_finalize error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             return SORM_DB_ERROR;
         }
@@ -2851,7 +2762,7 @@ int sorm_close(sorm_connection_t *conn)
 
     if(ret != SQLITE_OK)
     {
-        debug("sqlite3_close error : %s", 
+        log_debug("sqlite3_close error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
@@ -2859,9 +2770,6 @@ int sorm_close(sorm_connection_t *conn)
     mem_free(conn->db_file_path);
     mem_free(conn);
     
-    zlog_fini();
-    zlog_category = NULL;
-
-    //debug("Success return");
+    //log_debug("Success return");
     return SORM_OK;
 }

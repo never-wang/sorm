@@ -1,22 +1,21 @@
 /****************************************************************************
- *       Filename:  c_generate.h
+ *       Filename:  log.c
  *
- *    Description:  
+ *    Description:  log
  *
  *        Version:  1.0
- *        Created:  06/13/2013 12:06:48 PM
+ *        Created:  07/04/2013 02:16:19 PM
  *       Revision:  none
  *       Compiler:  gcc
  *
  *         Author:  Wang Wencan 
  *	    Email:  never.wencan@gmail.com
+ *        Company:  
  ***************************************************************************/
-#ifndef C_GENERATE_H
-#define C_GENERATE_H
+#include "log.h"
 
-#include "sorm.h"
+#ifdef ENABLE_ZLOG
 
-void sorm_header_generate(
-    const sorm_table_descriptor_t *table_desc);
+zlog_category_t *zlog_category = NULL;
 
 #endif

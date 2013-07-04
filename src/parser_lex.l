@@ -1,12 +1,14 @@
 %{
-#include "y.tab.h"
+#include "parser_yacc.h"
 extern int yylval;
 %}
 %%
 "create"            { return CREATE; }
 "table"             { return TABLE; }
 "{"                 { return LEFT_BRACKET; }
+"("                 { return LEFT_DASH; }
 "}"                 { return RIGHT_BRACKET; }
+")"                 { return RIGHT_DASH; }
 ","                 { return COMMA; }
 "text"              { return TEXT; }
 "integer"           { return INTEGER; }
@@ -15,8 +17,8 @@ extern int yylval;
 "asc"               { return ASC; }
 "desc"              { return DESC; }
 "unique"            { return UNIQUE; }
-[a-z]+              { yylval = strdup(yytext); 
-                      return NAME; }
+[a-z]+              { yylval = strdup(yytext); return NAME; }
+[0-9]+              { yylval = strdup(yytext); return NUMBER; }
 %%
 
 int yywrap()

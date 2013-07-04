@@ -13,10 +13,9 @@ static sorm_list_t *sorm_list_entry = NULL;
 #define parse_column(column_name)    \
     do{ \
         column_desc->name = (column_name);   \
-        column_desc->mem = SORM_MEM_HEAP;  \
         sorm_list_entry = (sorm_list_t*)mem_malloc(sizeof(sorm_list_t)); \
         sorm_list_entry->data = column_desc;    \
-        list_add_head(sorm_list_entry, columns_list_head);  \
+        list_add_tail(sorm_list_entry, columns_list_head);  \
         column_desc = (sorm_column_descriptor_t*)mem_malloc(sizeof(sorm_column_descriptor_t)); \
         memset(column_desc, 0, sizeof(sorm_column_descriptor_t));   \
         table_desc->columns_num ++; \
@@ -28,7 +27,9 @@ static sorm_list_t *sorm_list_entry = NULL;
 %token CREATE
 %token TABLE
 %token LEFT_BRACKET
+%token LEFT_DASH
 %token RIGHT_BRACKET
+%token RIGHT_DASH
 %token COMMA
 %token INTEGER
 %token TEXT
@@ -38,6 +39,7 @@ static sorm_list_t *sorm_list_entry = NULL;
 %token DESC 
 %token UNIQUE
 %token NAME
+%token NUMBER
 
 %%
 
@@ -68,11 +70,17 @@ column_def :
 column_type :
             INTEGER
            { column_desc->type = SORM_TYPE_INT; }
-            | TEXT
+            | text_type
            { column_desc->type = SORM_TYPE_TEXT; }
             | REAL
            { column_desc->type = SORM_TYPE_DOUBLE; }
 
+text_type :
+          TEXT
+          { column_desc->mem = SORM_MEM_HEAP; }
+          | TEXT LEFT_DASH NUMBER RIGHT_DASH
+          { column_desc->mem = SORM_MEM_STACK;
+            column_desc->text_max_len = atoi($3); }
 
 column_constraint :
                   PRIMARY_KEY
