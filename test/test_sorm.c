@@ -31,6 +31,8 @@ static int suite_sorm_init(void)
 {
     int ret;
 
+    sorm_init();
+
     ret = sorm_open(DB_FILE, SORM_DB_SQLITE, &conn);
 
     if(ret != SORM_OK)
@@ -69,6 +71,7 @@ static int suite_sorm_final(void)
     {
         return -1;
     }
+    sorm_final();
 
     return 0;
 }

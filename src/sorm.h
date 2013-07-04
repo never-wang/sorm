@@ -107,6 +107,7 @@ typedef enum
     /* Invalid sorm_type_t*/
     SORM_ARG_NULL,
     /* Input argument is NULL */
+    SORM_INIT_FAIL, /* sorm intialize fail */
 } sorm_error_t;
 
 /** @brief: join type */
@@ -216,6 +217,7 @@ static char* const sorm_errorstr[] =
     "Invalid sorm_mem",			/* 8 - SORM_INVALID_MEM */
     "Invalid sorm_type",		/* 9 - SORM_INVALID_TYPE */
     "One or more arguments is NULL",	/* 10 - SORM_ARG_NULL */
+    "Sorm intialize fail",    /* 11 - SORM_INIT_FAIL / */
 };
 
 static inline const char* sorm_strerror(int error_code)
@@ -299,6 +301,10 @@ void sorm_set_allocator(void *memory_pool,
     void*(*alloc)(void *memory_pool, size_t size), 
     void(*free)(void *memory_pool, void *point), 
     char*(*strdup)(void *memory_pool, const char *string));
+
+int sorm_init();
+void sorm_final();
+
 /**
  * @brief: create a connection to a database
  *
@@ -310,6 +316,15 @@ void sorm_set_allocator(void *memory_pool,
  */
 int sorm_open(
         const char *path, sorm_db_t db, sorm_connection_t **connection);
+
+/**
+ * @brief: close the connection to a database
+ *
+ * @param conn: the to be closed connection
+ *
+ * @return: error code
+ */
+int sorm_close(sorm_connection_t *conn);
 
 /**
  * @brief: create a table in a database according the table's descriptor
@@ -525,13 +540,5 @@ int sorm_select_all_list_by_join(
         const char *table2_column_name,
         sorm_join_t join, const char *filter, int *n,
         sorm_list_t **table1_row_head, sorm_list_t **table2_row_head);
-/**
- * @brief: close the connection to a database
- *
- * @param conn: the to be closed connection
- *
- * @return: error code
- */
-int sorm_close(sorm_connection_t *conn);
 
 #endif

@@ -19,11 +19,17 @@
 #include "zlog.h"
 #include "config.h"
 
+typedef enum
+{
+    LOG_OK          =   0,
+    LOG_INIT_FAIL   =   1,
+}log_error_t;
+
 #ifdef ENABLE_ZLOG
 
 extern zlog_category_t *zlog_category;
 
-static inline void check_zlog_init()
+static inline int log_init()
 {
     int ret;
 
@@ -33,14 +39,14 @@ static inline void check_zlog_init()
         if(ret != 0)
         {
             printf("zlog init fail.\n");
-            return;
+            return LOG_INIT_FAIL;
         }
         zlog_category = zlog_get_category("SORM");
         if(zlog_category == NULL)
         {
             zlog_fini();
             printf("zlog_get_category fail.\n");
-            return;
+            return LOG_INIT_FAIL;
         }
     }
 }
@@ -52,27 +58,22 @@ static inline void log_final()
         zlog_fini();
         zlog_category = NULL;
     }
-    printf("******************fuck\n");
 }
 
 #define log_log(f...) \
     do { \
-        check_zlog_init(); \
         zlog_fetal(zlog_category, ##f); \
     } while(0)
 #define log_debug(f...) \
     do { \
-        check_zlog_init(); \
         zlog_debug(zlog_category, ##f); \
     } while(0)
 #define log_error(f...) \
     do { \
-        check_zlog_init(); \
         zlog_error(zlog_category, ##f); \
     } while(0)
 #define log_info(f...) \
     do { \
-        check_zlog_init(); \
         zlog_info(zlog_category, ##f); \
     } while(0)
 
@@ -82,6 +83,9 @@ static inline void log_final()
 #define log_debug(f...) NULL
 #define log_error(f...) NULL
 #define log_info(f...)  NULL
+
+#define log_init() NULL
+#define log_final() NULL
 
 #endif
 
