@@ -49,6 +49,8 @@ static inline int log_init()
             return LOG_INIT_FAIL;
         }
     }
+
+    return LOG_OK;
 }
 
 static inline void log_final()

@@ -19,6 +19,7 @@
 #include "sorm.h"
 #include "memory.h"
 #include "log.h"
+#include "semaphore.h"
 
 #define _list_cpy_free(desc, head, n, rows, free) \
     __list_cpy_free(desc, head, n, rows, (void*)(free))
@@ -302,14 +303,44 @@ static inline int _sqlite3_column(
     return SORM_OK;
 }
 
-int  _sqlite3_step(sqlite3_stmt *stmt_handle)
+static inline int  _sqlite3_step(
+        const sorm_connection_t *conn, sqlite3_stmt *stmt_handle)
 {
     int ret;
 
-    ret = SQLITE_BUSY;
-    while(ret == SQLITE_BUSY)
+    if(conn->transaction_num == 0) /* no transaction */
     {
-        ret = sqlite3_step(stmt_handle);
+        sem_p();
+    }
+
+
+    ret = sqlite3_step(stmt_handle);
+    
+    if(conn->transaction_num == 0) /* no transaction */
+    {
+        sem_v();
+    }
+
+    return ret;
+}
+
+static inline int _sqlite3_prepare(
+        const sorm_connection_t *conn, char *sql_stmt, sqlite3_stmt **stmt_handle)
+{
+    int ret;
+
+    if(conn->transaction_num == 0) /* no transaction */
+    {
+        sem_p();
+    }
+
+
+    ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, SQL_STMT_MAX_LEN,
+            stmt_handle, NULL);
+    
+    if(conn->transaction_num == 0) /* no transaction */
+    {
+        sem_v();
     }
 
     return ret;
@@ -865,7 +896,13 @@ int sorm_init()
 {
     if(log_init() != LOG_OK)
     {
-        printf("log init fail.");
+        printf("log init fail.\n");
+        return SORM_INIT_FAIL;
+    }
+
+    if(sem_init() != SEM_OK)
+    {
+        error("semaphore init fail.");
         return SORM_INIT_FAIL;
     }
 
@@ -875,6 +912,7 @@ int sorm_init()
 void sorm_final()
 {
     log_final();
+    sem_final();
 }
 
 int sorm_open(
@@ -1003,8 +1041,7 @@ int sorm_create_table(
     sql_stmt[offset - 1] = ')';
 
     log_debug("prepare stmt : %s", sql_stmt);
-    ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
-            SQL_STMT_MAX_LEN, &stmt_handle, NULL);
+    ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
 
     if(ret != SQLITE_OK)
     {
@@ -1013,7 +1050,7 @@ int sorm_create_table(
         return SORM_DB_ERROR;
     }
 
-    ret = _sqlite3_step(stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle);
 
     if(ret != SQLITE_DONE)
     {
@@ -1069,8 +1106,7 @@ int sorm_delete_table(
     }
 
     log_debug("prepare stmt : %s", sql_stmt);
-    ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
-            SQL_STMT_MAX_LEN, &stmt_handle, NULL);
+    ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
 
     if(ret != SQLITE_OK)
     {
@@ -1079,7 +1115,7 @@ int sorm_delete_table(
         return SORM_DB_ERROR;
     }
 
-    ret = _sqlite3_step(stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle);
 
     if(ret != SQLITE_DONE)
     {
@@ -1317,8 +1353,8 @@ int sorm_save(
     sql_stmt[offset - 1] = ')';
 
     log_debug("prepare stmt : %s", sql_stmt);
-    ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
-            SQL_STMT_MAX_LEN, &stmt_handle, NULL);
+    
+    ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
 
     if(ret != SQLITE_OK)
     {
@@ -1344,7 +1380,7 @@ int sorm_save(
         }
     }
 
-    ret = _sqlite3_step(stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle);
 
     if(ret != SQLITE_DONE)
     {
@@ -1418,8 +1454,7 @@ int sorm_delete(
     sql_stmt[offset - 4] = '\0';
 
     log_debug("prepare stmt : %s", sql_stmt);
-    ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
-            SQL_STMT_MAX_LEN, &stmt_handle, NULL);
+    ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
 
     if(ret != SQLITE_OK)
     {
@@ -1445,7 +1480,7 @@ int sorm_delete(
         }
     }
 
-    ret = _sqlite3_step(stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle);
 
     if(ret != SQLITE_DONE)
     {
@@ -1562,8 +1597,7 @@ int sorm_delete_by(
     log_debug("prepare stmt : %s", sql_stmt);
 
     /* sqlite3_prepare */
-    ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
-            SQL_STMT_MAX_LEN, &stmt_handle, NULL);
+    ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
     if(ret != SQLITE_OK)
     {
         log_debug("sqlite3_prepare error : %s", 
@@ -1571,7 +1605,7 @@ int sorm_delete_by(
         return SORM_DB_ERROR;
     }
 
-    ret = _sqlite3_step(stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle);
 
     if(ret != SQLITE_DONE)
     {
@@ -1727,8 +1761,7 @@ static int _select(
 
     /* sqlite3_prepare */
     log_debug("prepare stmt : %s", sql_stmt);
-    ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
-            SQL_STMT_MAX_LEN, &stmt_handle, NULL);
+    ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
     if(ret != SQLITE_OK)
     {
         log_error("sqlite3_prepare error : %s", 
@@ -1821,7 +1854,7 @@ int _select_some_array_core(
     step_ret = SQLITE_DONE; //init to SQLITE_DONE, for row_numbe can ben zero
     while((*rows_num) < max_rows_num)
     {
-        step_ret = _sqlite3_step(stmt_handle);
+        step_ret = _sqlite3_step(conn, stmt_handle);
         if(step_ret == SQLITE_ROW)
         {
             //a new row
@@ -1914,7 +1947,7 @@ int _select_some_list_core(
     step_ret = SQLITE_DONE; //init to SQLITE_DONE, for row_numbe can ben zero
     while((*rows_num) < max_rows_num)
     {
-        step_ret = _sqlite3_step(stmt_handle);
+        step_ret = _sqlite3_step(conn, stmt_handle);
         if(step_ret == SQLITE_ROW)
         {
             //a new row
@@ -2021,7 +2054,7 @@ int _select_all_list_core(
 
     while(1)
     {
-        ret = _sqlite3_step(stmt_handle);
+        ret = _sqlite3_step(conn, stmt_handle);
         if(ret == SQLITE_ROW)
         {
             //a new row
@@ -2418,6 +2451,7 @@ int sorm_begin_transaction(sorm_connection_t *conn)
 
     if(conn->transaction_num == 0) /* first transaction */
     {
+        sem_p();
         if(conn->begin_trans_stmt == NULL)
         {
             ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1, 
@@ -2447,7 +2481,7 @@ int sorm_begin_transaction(sorm_connection_t *conn)
             stmt_handle = conn->begin_trans_stmt;
         }
 
-        ret = _sqlite3_step(stmt_handle);
+        ret = sqlite3_step(stmt_handle);
 
         if(ret != SQLITE_DONE)
         {
@@ -2522,7 +2556,8 @@ int sorm_commit_transaction(sorm_connection_t *conn)
             stmt_handle = conn->commit_trans_stmt;
         }
 
-        ret = _sqlite3_step(stmt_handle);
+        ret = sqlite3_step(stmt_handle);
+        sem_v();
 
         if(ret != SQLITE_DONE)
         {
@@ -2589,7 +2624,8 @@ int sorm_rollback_transaction(sorm_connection_t *conn)
             return SORM_DB_ERROR;
         }
 
-        ret = _sqlite3_step(stmt_handle);
+        ret = sqlite3_step(stmt_handle);
+        sem_v();
 
         if(ret != SQLITE_DONE)
         {
