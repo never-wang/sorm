@@ -33,7 +33,12 @@ static inline void case_lower2upper(char *lower_case, char *upper_case)
 
     while(lower_case[i] != '\0')
     {
-        upper_case[i] = lower_case[i] - 32;
+        if(lower_case[i] <= 'z' && lower_case[i] >= 'a')
+        {
+            upper_case[i] = lower_case[i] - 32;
+        }else{
+            upper_case[i] = lower_case[i];
+        }
         i++;
     }
     upper_case[i] = '\0';

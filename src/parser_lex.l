@@ -17,7 +17,7 @@ extern int yylval;
 "asc"               { return ASC; }
 "desc"              { return DESC; }
 "unique"            { return UNIQUE; }
-[a-z]+              { yylval = strdup(yytext); return NAME; }
+[a-z_]+              { yylval = strdup(yytext); return NAME; }
 [0-9]+              { yylval = strdup(yytext); return NUMBER; }
 %%
 

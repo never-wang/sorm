@@ -1248,7 +1248,7 @@ int sorm_set_column_value(
                 offset = ret;
                 if(ret < 0 || offset > column_desc->text_max_len)
                 {
-                    log_error("get too long text from db, "
+                    log_error("set too long text, "
                             "length(%d) > max length(%d)", offset, 
                             column_desc->text_max_len);
                     return SORM_TOO_LONG;

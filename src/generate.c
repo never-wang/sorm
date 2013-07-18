@@ -25,10 +25,16 @@ sorm_column_descriptor_t *column_desc = NULL;
 
 extern FILE *yyin;
 
-int main()
+int main(int argc, char **argv)
 {
     sorm_list_t *pos, *scratch;
     int i;
+
+    if(argc != 2)
+    {
+        printf("Usage : sorm_generate input_file\n");
+        return -1;
+    }
 
     table_desc = mem_malloc(sizeof(sorm_table_descriptor_t));
     memset(table_desc, 0, sizeof(sorm_table_descriptor_t));
@@ -39,7 +45,7 @@ int main()
     column_desc = mem_malloc(sizeof(sorm_column_descriptor_t));
     memset(column_desc, 0, sizeof(sorm_column_descriptor_t));
     
-    yyin = fopen("sample", "r");
+    yyin = fopen(argv[1], "r");
 
     yyparse();
 
