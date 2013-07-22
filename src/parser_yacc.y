@@ -40,6 +40,8 @@ static sorm_list_t *sorm_list_entry = NULL;
 %token UNIQUE
 %token NAME
 %token NUMBER
+%token FOREIGN_KEY
+%token REFERENCES
 
 %%
 
@@ -48,9 +50,12 @@ ROOT :
      ;
 
 statement:
-         CREATE TABLE NAME LEFT_BRACKET columns_def RIGHT_BRACKET
+         CREATE TABLE NAME LEFT_BRACKET columns_def COMMA table_defs RIGHT_BRACKET 
          { 
-           //printf("CREATE TABLE %s { %s } \n", $3, $5); 
+           table_desc->name = $3; 
+         }
+	 | CREATE TABLE NAME LEFT_BRACKET columns_def RIGHT_BRACKET 
+         { 
            table_desc->name = $3; 
          }
          ;
@@ -74,6 +79,7 @@ column_type :
            { column_desc->type = SORM_TYPE_TEXT; }
             | REAL
            { column_desc->type = SORM_TYPE_DOUBLE; }
+	   ;
 
 text_type :
           TEXT
@@ -81,6 +87,7 @@ text_type :
           | TEXT LEFT_DASH NUMBER RIGHT_DASH
           { column_desc->mem = SORM_MEM_STACK;
             column_desc->text_max_len = atoi($3); }
+	    ;
 
 column_constraint :
                   PRIMARY_KEY
@@ -92,6 +99,29 @@ column_constraint :
            | UNIQUE
            { column_desc->constraint = SORM_CONSTRAINT_UNIQUE; }
            ;
+
+table_defs :
+	   table_defs COMMA table_def
+	   | table_def
+	  
+table_def :
+	  FOREIGN_KEY LEFT_DASH NAME RIGHT_DASH REFERENCES NAME LEFT_DASH NAME RIGHT_DASH
+	  { 
+	    sorm_list_t *pos = NULL;
+	    sorm_column_descriptor_t *column_desc;
+	    sorm_list_for_each(pos, columns_list_head)
+	    {
+		column_desc = (sorm_column_descriptor_t *)
+		    pos->data;
+		if(strcmp(column_desc->name, $3) == 0)
+		{
+		    column_desc->is_foreign_key = 1;
+		    column_desc->foreign_table_name = $6;
+		    column_desc->foreign_column_name = $8;
+		    break;
+		}
+	    }
+	}
 %%
 
 int yyerror(char *msg)

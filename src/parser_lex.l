@@ -3,20 +3,22 @@
 extern int yylval;
 %}
 %%
-"create"            { return CREATE; }
-"table"             { return TABLE; }
+"CREATE"            { return CREATE; }
+"TABLE"             { return TABLE; }
 "{"                 { return LEFT_BRACKET; }
 "("                 { return LEFT_DASH; }
 "}"                 { return RIGHT_BRACKET; }
 ")"                 { return RIGHT_DASH; }
 ","                 { return COMMA; }
-"text"              { return TEXT; }
-"integer"           { return INTEGER; }
-"real"              { return REAL; }
-"primary key"       { return PRIMARY_KEY; }
-"asc"               { return ASC; }
-"desc"              { return DESC; }
-"unique"            { return UNIQUE; }
+"TEXT"              { return TEXT; }
+"INTEGER"           { return INTEGER; }
+"REAL"              { return REAL; }
+"PRIMARY KEY"       { return PRIMARY_KEY; }
+"ASC"               { return ASC; }
+"DESC"              { return DESC; }
+"UNIQUE"            { return UNIQUE; }
+"FOREIGN KEY"	    { return FOREIGN_KEY; }
+"REFERENCES"        { return REFERENCES; }
 [a-z_]+              { yylval = strdup(yytext); return NAME; }
 [0-9]+              { yylval = strdup(yytext); return NUMBER; }
 %%

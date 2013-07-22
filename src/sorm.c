@@ -970,6 +970,7 @@ int sorm_create_table(
     int offset;
     int ret, ret_val;
     int i;
+    sorm_column_descriptor_t *column_desc;
 
     if(conn == NULL)
     {
@@ -993,10 +994,10 @@ int sorm_create_table(
 
     for(i = 0; i < table_desc->columns_num; i ++)
     {
-
+	column_desc = &(table_desc->columns[i]);
         ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
-                " %s %s", table_desc->columns[i].name, 
-                sorm_type_db_str[table_desc->columns[i].type]);
+                " %s %s", column_desc->name, 
+                sorm_type_db_str[column_desc->type]);
         offset += ret;
         if(ret < 0 || offset > SQL_STMT_MAX_LEN)
         {
@@ -1006,7 +1007,7 @@ int sorm_create_table(
             return SORM_TOO_LONG;
         }
 
-        switch(table_desc->columns[i].constraint)
+        switch(column_desc->constraint)
         {
             case SORM_CONSTRAINT_PK :
                 ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
@@ -1037,8 +1038,45 @@ int sorm_create_table(
                     offset, SQL_STMT_MAX_LEN);
             return SORM_TOO_LONG;
         }
+
+	if(column_desc->is_foreign_key)
+	{
+	    ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
+		    "FOREIGN KEY(%s) REFERENCES %s(%s), ",
+		    column_desc->name, column_desc->foreign_table_name, 
+		    column_desc->foreign_column_name);
+	    offset += ret;
+	    if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+	    {
+		log_debug("snprintf error while constructing sql "
+			"statment, snprintf length(%d) > max length(%d)", 
+			offset, SQL_STMT_MAX_LEN);
+		return SORM_TOO_LONG;
+	    }
+	}
     }
+
     sql_stmt[offset - 1] = ')';
+    
+    for(i = 0; i < table_desc->columns_num; i ++)
+    {
+	column_desc = &(table_desc->columns[i]);
+	if(column_desc->is_foreign_key)
+	{
+	    ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
+		    "; CREATE INDEX %s_index ON %s(%s)",
+		    column_desc->name, table_desc->name, 
+		    column_desc->name);
+	    offset += ret;
+	    if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+	    {
+		log_debug("snprintf error while constructing sql "
+			"statment, snprintf length(%d) > max length(%d)", 
+			offset, SQL_STMT_MAX_LEN);
+		return SORM_TOO_LONG;
+	    }
+	}
+    }
 
     log_debug("prepare stmt : %s", sql_stmt);
     ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);

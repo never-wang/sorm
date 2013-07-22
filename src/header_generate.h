@@ -17,9 +17,6 @@
 
 #include "sorm.h"
 
-#define INDENT "    "
-#define HEADER_NAME_MAX_LEN 127
-
 void header_generate(
     const sorm_table_descriptor_t *table_desc);
 

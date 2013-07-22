@@ -19,6 +19,10 @@
 #include "sorm.h"
 #include "memory.h"
 
+#define INDENT "    "
+#define INDENT_TWICE INDENT INDENT
+#define HEADER_NAME_MAX_LEN 127
+
 static inline void case_lower2upper(char *lower_case, char *upper_case)
 {
     int i;
@@ -238,25 +242,28 @@ static void header_generate_func_select(
                     fprintf(file, "int %s_select_by_%s(\n"
                             INDENT "const sorm_connection_t *conn,\n"
                             INDENT "const char *column_names, int %s,\n"
-                            INDENT "device_t **device);\n", table_desc->name, 
+                            INDENT "%s_t **%s);\n", table_desc->name, 
                             table_desc->columns[i].name, 
-                            table_desc->columns[i].name);
+                            table_desc->columns[i].name, 
+			    table_desc->name, table_desc->name);
                     break;
                 case SORM_TYPE_TEXT :
                     fprintf(file, "int %s_select_by_%s(\n"
                             INDENT "const sorm_connection_t *conn,\n"
                             INDENT "const char *column_names, const char* %s,\n"
-                            INDENT "device_t **device);\n", table_desc->name, 
+                            INDENT "%s_t **%s);\n", table_desc->name, 
                             table_desc->columns[i].name, 
-                            table_desc->columns[i].name);
+                            table_desc->columns[i].name, 
+			    table_desc->name, table_desc->name);
                     break;
                 case SORM_TYPE_DOUBLE :
                     fprintf(file, "int %s_select_by_%s(\n"
                             INDENT "const sorm_connection_t *conn,\n"
                             INDENT "const char *column_names, double* %s,\n"
-                            INDENT "device_t **device);\n", table_desc->name, 
+                            INDENT "%s_t **%s);\n", table_desc->name, 
                             table_desc->columns[i].name, 
-                            table_desc->columns[i].name);
+                            table_desc->columns[i].name, 
+			    table_desc->name, table_desc->name);
                     break;
                 default :
                     error("Invalid SORM_TYPE.");
@@ -267,24 +274,58 @@ static void header_generate_func_select(
     fprintf(file, "\n");
 
     fprintf(file, "int %s_select_some_array_by(\n"
-            INDENT "const sorm_connection_t *conn,\n"
-            INDENT "const char *column_names, const char *filter,\n" 
-            INDENT "int *n, device_t **devices_array);\n"
+            INDENT_TWICE "const sorm_connection_t *conn,\n"
+            INDENT_TWICE "const char *column_names, const char *filter,\n" 
+            INDENT_TWICE "int *n, %s_t **%ss_array);\n"
             "int %s_select_some_list_by(\n"
-            INDENT "const sorm_connection_t *conn,\n"
-            INDENT "const char *column_names, const char *filter,\n" 
-            INDENT "int *n, sorm_list_t **devices_list_head);\n"
-            "int device_select_all_array_by(\n"
-            INDENT "const sorm_connection_t *conn,\n"
-            INDENT "const char *column_names, const char *filter,\n"
-            INDENT "int *n, device_t **devices_array);\n"
-            "int device_select_all_list_by(\n"
-            INDENT "const sorm_connection_t *conn,\n"
-            INDENT "const char *column_names, const char *filter,\n" 
-            INDENT "int *n, sorm_list_t **devices_list_head);\n\n",
+            INDENT_TWICE "const sorm_connection_t *conn,\n"
+            INDENT_TWICE"const char *column_names, const char *filter,\n" 
+            INDENT_TWICE"int *n, sorm_list_t **%ss_list_head);\n"
+            "int %s_select_all_array_by(\n"
+            INDENT_TWICE "const sorm_connection_t *conn,\n"
+            INDENT_TWICE "const char *column_names, const char *filter,\n"
+            INDENT_TWICE "int *n, %s_t **%ss_array);\n"
+            "int %s_select_all_list_by(\n"
+            INDENT_TWICE "const sorm_connection_t *conn,\n"
+            INDENT_TWICE "const char *column_names, const char *filter,\n" 
+            INDENT_TWICE "int *n, sorm_list_t **%ss_list_head);\n\n",
             table_desc->name, table_desc->name, 
-            table_desc->name, table_desc->name);
+            table_desc->name, table_desc->name,
+            table_desc->name, table_desc->name, 
+            table_desc->name, table_desc->name,
+            table_desc->name, table_desc->name); 
 
+    /* select by foreign key */
+    for(i = 0; i < table_desc->columns_num; i ++)
+    {
+	if(table_desc->columns[i].is_foreign_key == 1)
+	{
+	    fprintf(file, "int %s_select_some_array_by_%s(\n"
+		    INDENT_TWICE "const sorm_connection_t *conn,\n"
+		    INDENT_TWICE "const char *column_names, const char *filter,\n" 
+		    INDENT_TWICE "int *n, %s_t **%ss_array);\n",
+		    table_desc->name, table_desc->columns[i].foreign_table_name,
+		    table_desc->name, table_desc->name);
+	    fprintf(file, "int %s_select_some_list_by_%s(\n"
+		    INDENT_TWICE "const sorm_connection_t *conn,\n"
+		    INDENT_TWICE"const char *column_names, const char *filter,\n" 
+		    INDENT_TWICE"int *n, sorm_list_t **%ss_list_head);\n",
+		    table_desc->name, table_desc->columns[i].foreign_table_name,
+		    table_desc->name);
+	    fprintf(file, "int %s_select_all_array_by_%s(\n"
+		    INDENT_TWICE "const sorm_connection_t *conn,\n"
+		    INDENT_TWICE "const char *column_names, const char *filter,\n"
+		    INDENT_TWICE "int *n, %s_t **%ss_array);\n", 
+		    table_desc->name, table_desc->columns[i].foreign_table_name,
+		    table_desc->name, table_desc->name);
+	    fprintf(file, "int %s_select_all_list_by_%s(\n"
+		    INDENT_TWICE "const sorm_connection_t *conn,\n"
+		    INDENT_TWICE "const char *column_names, const char *filter,\n" 
+		    INDENT_TWICE "int *n, sorm_list_t **%ss_list_head);\n\n",
+		    table_desc->name, table_desc->columns[i].foreign_table_name,
+		    table_desc->name);
+	}
+    }
 }
 
 void header_generate(
