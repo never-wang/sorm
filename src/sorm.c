@@ -919,8 +919,8 @@ int sorm_open(
         const char *path, sorm_db_t db, sorm_connection_t **connection)
 {
     sorm_connection_t *_connection = NULL;
-    int ret;
-
+    int ret, ret_val;
+    sqlite3_stmt *stmt_handle = NULL;
 
     //log_debug("Start");
 
@@ -957,9 +957,40 @@ int sorm_open(
     }
 
     *connection = _connection;
+    
+    ret = _sqlite3_prepare(_connection, "PRAGMA foreign_keys = ON", &stmt_handle);
+
+    if(ret != SQLITE_OK)
+    {
+        log_debug("sqlite3_prepare error : %s", 
+                sqlite3_errmsg(_connection->sqlite3_handle));
+        return SORM_DB_ERROR;
+    }
+
+    ret = _sqlite3_step(_connection, stmt_handle);
+
+    if(ret != SQLITE_DONE)
+    {
+        log_debug("sqlite3_step error : %s", 
+                sqlite3_errmsg(_connection->sqlite3_handle));
+        ret_val = SORM_DB_ERROR;
+        goto DB_FINALIZE;
+    }
+    ret_val = SORM_OK;
+
+DB_FINALIZE :
+    ret = sqlite3_finalize(stmt_handle);
+    if(ret != SQLITE_OK)
+    {
+        log_debug("sqlite3_finalize error : %s", 
+                sqlite3_errmsg(_connection->sqlite3_handle));
+        return SORM_DB_ERROR;
+    }
+    return ret_val;
+
+    /* foreign key support */
 
     //log_debug("Success return");
-    return SORM_OK;
 }
 
 int sorm_create_table(
@@ -1038,11 +1069,16 @@ int sorm_create_table(
                     offset, SQL_STMT_MAX_LEN);
             return SORM_TOO_LONG;
         }
+    }
 
+    /* foreign key */
+    for(i = 0; i < table_desc->columns_num; i ++)
+    {
+	column_desc = &(table_desc->columns[i]);
 	if(column_desc->is_foreign_key)
 	{
 	    ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
-		    "FOREIGN KEY(%s) REFERENCES %s(%s), ",
+		    " FOREIGN KEY(%s) REFERENCES %s(%s),",
 		    column_desc->name, column_desc->foreign_table_name, 
 		    column_desc->foreign_column_name);
 	    offset += ret;

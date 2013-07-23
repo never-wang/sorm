@@ -74,8 +74,8 @@ static void c_generate_column_desc(
                 INDENT_TWICE "SORM_OFFSET(%s_t, %s),\n"
                                                 /* offset               */
                 INDENT_TWICE "%d,\n"            /* is_foreign_key       */
-                INDENT_TWICE "%s,\n"            /* foreign_table_name   */
-                INDENT_TWICE "%s,\n"            /* foreign_column_name  */
+                INDENT_TWICE "\"%s\",\n"        /* foreign_table_name   */
+                INDENT_TWICE "\"%s\",\n"        /* foreign_column_name  */
                 INDENT "},\n",
                 column_desc->name, i, sorm_strtype(column_desc->type),
                 sorm_strconstraint(column_desc->constraint), 
@@ -400,8 +400,8 @@ static void c_generate_func_select(
 		    INDENT_TWICE "int *n, %s_t **%ss_array)\n{\n"
 		    INDENT	 "return sorm_select_some_array_by_join(conn, column_names,\n"
 		    INDENT_TRIPLE "&%s_table_descriptor, \"%s\", %s_DESC, \"%s\", \n"
-		    INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, "
-				  "(sorm_table_descriptor_t **)%ss_array);\n}\n\n",
+		    INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, \n"
+		    INDENT_TRIPLE "(sorm_table_descriptor_t **)%ss_array, NULL);\n}\n\n",
 		    table_desc->name, table_desc->columns[i].foreign_table_name,
 		    table_desc->name, table_desc->name,
 		    table_desc->name, table_desc->columns[i].name,
@@ -410,10 +410,10 @@ static void c_generate_func_select(
 	    fprintf(file, "int %s_select_some_list_by_%s(\n"
 		    INDENT_TWICE "const sorm_connection_t *conn,\n"
 		    INDENT_TWICE"const char *column_names, const char *filter,\n" 
-		    INDENT_TWICE"int *n, sorm_list_t **%ss_list_head);\n"
+		    INDENT_TWICE"int *n, sorm_list_t **%ss_list_head)\n{\n"
 		    INDENT	 "return sorm_select_some_list_by_join(conn, column_names,\n"
 		    INDENT_TRIPLE "&%s_table_descriptor, \"%s\", %s_DESC, \"%s\", \n"
-		    INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, %ss_list_head);\n}\n\n",
+		    INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, %ss_list_head, NULL);\n}\n\n",
 		    table_desc->name, table_desc->columns[i].foreign_table_name,
 		    table_desc->name, table_desc->name, table_desc->columns[i].name,
 		    upper_foreign_table_name, table_desc->columns[i].foreign_column_name, 
@@ -421,11 +421,11 @@ static void c_generate_func_select(
 	    fprintf(file, "int %s_select_all_array_by_%s(\n"
 		    INDENT_TWICE "const sorm_connection_t *conn,\n"
 		    INDENT_TWICE "const char *column_names, const char *filter,\n"
-		    INDENT_TWICE "int *n, %s_t **%ss_array);\n"
+		    INDENT_TWICE "int *n, %s_t **%ss_array)\n{\n"
 		    INDENT	 "return sorm_select_all_array_by_join(conn, column_names,\n"
 		    INDENT_TRIPLE "&%s_table_descriptor, \"%s\", %s_DESC, \"%s\", \n"
 		    INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, "
-				  "(sorm_table_descriptor_t **)%ss_array);\n}\n\n",
+		    INDENT_TRIPLE "(sorm_table_descriptor_t **)%ss_array, NULL);\n}\n\n",
 		    table_desc->name, table_desc->columns[i].foreign_table_name,
 		    table_desc->name, table_desc->name,
 		    table_desc->name, table_desc->columns[i].name,
@@ -434,10 +434,10 @@ static void c_generate_func_select(
 	    fprintf(file, "int %s_select_all_list_by_%s(\n"
 		    INDENT_TWICE "const sorm_connection_t *conn,\n"
 		    INDENT_TWICE "const char *column_names, const char *filter,\n" 
-		    INDENT_TWICE "int *n, sorm_list_t **%ss_list_head);\n\n"
+		    INDENT_TWICE "int *n, sorm_list_t **%ss_list_head)\n{\n"
 		    INDENT	 "return sorm_select_all_list_by_join(conn, column_names,\n"
 		    INDENT_TRIPLE "&%s_table_descriptor, \"%s\", %s_DESC, \"%s\", \n"
-		    INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, %ss_list_head);\n}\n\n",
+		    INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, %ss_list_head, NULL);\n}\n\n",
 		    table_desc->name, table_desc->columns[i].foreign_table_name,
 		    table_desc->name, table_desc->name, table_desc->columns[i].name,
 		    upper_foreign_table_name, table_desc->columns[i].foreign_column_name, 
@@ -452,9 +452,9 @@ void c_generate(
     const sorm_table_descriptor_t *table_desc)
 {
     FILE *file;
-    char *file_name, *header_file_name;
+    char *file_name, *header_file_name, *foreign_header_file_name;
     int ret, offset;
-    int table_name_len;
+    int table_name_len, foreign_table_name_len;
     int i;
 
     table_name_len = strlen(table_desc->name);
@@ -470,6 +470,17 @@ void c_generate(
     }
 
     fprintf(file, "#include \"%s\"\n", header_file_name);
+    for(i = 0; i < table_desc->columns_num; i ++)
+    {
+	if(table_desc->columns[i].is_foreign_key == 1)
+	{
+	    foreign_table_name_len = strlen(table_desc->columns[i].foreign_table_name);
+	    foreign_header_file_name = mem_malloc(foreign_table_name_len + 8);
+	    sprintf(foreign_header_file_name, "%s_sorm.h", table_desc->columns[i].foreign_table_name);
+	    fprintf(file, "#include \"%s\"\n", foreign_header_file_name);
+	    mem_free(foreign_header_file_name);
+	}
+    }
     
     c_generate_column_desc(file, table_desc);
     c_generate_device_desc(file, table_desc);
