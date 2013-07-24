@@ -29,7 +29,7 @@ int main()
     char buf[128];
     device_t *device;
 
-    ret = sorm_init();
+    ret = sorm_init(0);
     if(ret != SORM_OK)
     {
         return -1;

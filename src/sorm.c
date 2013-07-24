@@ -21,6 +21,8 @@
 #include "log.h"
 #include "semaphore.h"
 
+static int foreign_key_enabled = 0;
+
 #define _list_cpy_free(desc, head, n, rows, free) \
     __list_cpy_free(desc, head, n, rows, (void*)(free))
 
@@ -892,7 +894,7 @@ void sorm_set_allocator(void *memory_pool,
     mem_set_allocator(memory_pool, _alloc, _free, _strdup);
 }
 
-int sorm_init()
+int sorm_init(int flags)
 {
     if(log_init() != LOG_OK)
     {
@@ -904,6 +906,11 @@ int sorm_init()
     {
         error("semaphore init fail.");
         return SORM_INIT_FAIL;
+    }
+
+    if((flags & SORM_ENABLE_FOREIGN_KEY) == SORM_ENABLE_FOREIGN_KEY)
+    {
+	foreign_key_enabled = 1;
     }
 
     return SORM_OK;
@@ -958,36 +965,39 @@ int sorm_open(
 
     *connection = _connection;
     
-    ret = _sqlite3_prepare(_connection, "PRAGMA foreign_keys = ON", &stmt_handle);
-
-    if(ret != SQLITE_OK)
+    if(foreign_key_enabled == 1)
     {
-        log_debug("sqlite3_prepare error : %s", 
-                sqlite3_errmsg(_connection->sqlite3_handle));
-        return SORM_DB_ERROR;
+	ret = _sqlite3_prepare(_connection, "PRAGMA foreign_keys = ON", &stmt_handle);
+
+	if(ret != SQLITE_OK)
+	{
+	    log_debug("sqlite3_prepare error : %s", 
+		    sqlite3_errmsg(_connection->sqlite3_handle));
+	    return SORM_DB_ERROR;
+	}
+
+	ret = _sqlite3_step(_connection, stmt_handle);
+
+	if(ret != SQLITE_DONE)
+	{
+	    log_debug("sqlite3_step error : %s", 
+		    sqlite3_errmsg(_connection->sqlite3_handle));
+	    ret_val = SORM_DB_ERROR;
+	}else
+	{
+	    ret_val = SORM_OK;
+	}
+	ret = sqlite3_finalize(stmt_handle);
+	if(ret != SQLITE_OK)
+	{
+	    log_debug("sqlite3_finalize error : %s", 
+		    sqlite3_errmsg(_connection->sqlite3_handle));
+	    return SORM_DB_ERROR;
+	}
+	return ret_val;
     }
 
-    ret = _sqlite3_step(_connection, stmt_handle);
-
-    if(ret != SQLITE_DONE)
-    {
-        log_debug("sqlite3_step error : %s", 
-                sqlite3_errmsg(_connection->sqlite3_handle));
-        ret_val = SORM_DB_ERROR;
-        goto DB_FINALIZE;
-    }
-    ret_val = SORM_OK;
-
-DB_FINALIZE :
-    ret = sqlite3_finalize(stmt_handle);
-    if(ret != SQLITE_OK)
-    {
-        log_debug("sqlite3_finalize error : %s", 
-                sqlite3_errmsg(_connection->sqlite3_handle));
-        return SORM_DB_ERROR;
-    }
-    return ret_val;
-
+    return SORM_OK;
     /* foreign key support */
 
     //log_debug("Success return");
@@ -1072,22 +1082,25 @@ int sorm_create_table(
     }
 
     /* foreign key */
-    for(i = 0; i < table_desc->columns_num; i ++)
+    if(foreign_key_enabled == 1)
     {
-	column_desc = &(table_desc->columns[i]);
-	if(column_desc->is_foreign_key)
+	for(i = 0; i < table_desc->columns_num; i ++)
 	{
-	    ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
-		    " FOREIGN KEY(%s) REFERENCES %s(%s),",
-		    column_desc->name, column_desc->foreign_table_name, 
-		    column_desc->foreign_column_name);
-	    offset += ret;
-	    if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+	    column_desc = &(table_desc->columns[i]);
+	    if(column_desc->is_foreign_key)
 	    {
-		log_debug("snprintf error while constructing sql "
-			"statment, snprintf length(%d) > max length(%d)", 
-			offset, SQL_STMT_MAX_LEN);
-		return SORM_TOO_LONG;
+		ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
+			" FOREIGN KEY(%s) REFERENCES %s(%s),",
+			column_desc->name, column_desc->foreign_table_name, 
+			column_desc->foreign_column_name);
+		offset += ret;
+		if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+		{
+		    log_debug("snprintf error while constructing sql "
+			    "statment, snprintf length(%d) > max length(%d)", 
+			    offset, SQL_STMT_MAX_LEN);
+		    return SORM_TOO_LONG;
+		}
 	    }
 	}
     }

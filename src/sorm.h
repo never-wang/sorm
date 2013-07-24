@@ -20,8 +20,9 @@
 #include <stddef.h>
 
 #include "sqlite3.h"
-//#include "noahark_log.h"
-#include "zlog.h"
+
+/* init flags */
+#define SORM_ENABLE_FOREIGN_KEY	    0x1 /* enable foreign key support in sqlite3 */
 
 #define SORM_OFFSET(struct, member) offsetof(struct, member)
 #define SORM_SIZE(struct)    sizeof(struct)
@@ -302,7 +303,7 @@ void sorm_set_allocator(void *memory_pool,
     void(*free)(void *memory_pool, void *point), 
     char*(*strdup)(void *memory_pool, const char *string));
 
-int sorm_init();
+int sorm_init(int flags);
 void sorm_final();
 
 /**

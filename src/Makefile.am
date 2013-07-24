@@ -12,3 +12,5 @@ sorm_generate_SOURCES = generate.c generate.h header_generate.c header_generate.
 						log.c log.h
 sorm_generate_LDADD = libsorm.la -ldl
 sorm_generate_CFLAGS = -I../third-part/zlog-1.2.1
+
+include_HEADERS = sorm.h

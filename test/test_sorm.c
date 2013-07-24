@@ -31,7 +31,7 @@ static int suite_sorm_init(void)
 {
     int ret;
 
-    if(sorm_init() != SORM_OK)
+    if(sorm_init(SORM_ENABLE_FOREIGN_KEY) != SORM_OK)
     {
         return -1;
     }
