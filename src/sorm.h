@@ -40,7 +40,6 @@
 #define NO_INDEXES_IN_RESULT -1 /* used in indexes_in_result , means
                                    the column has not been selected */
 
-#define list_free(head, free) _list_free(head, (void*)(free))
 /* sorm_list */
 typedef struct sorm_list_s
 {
@@ -62,6 +61,12 @@ typedef struct sorm_list_s
 #define sorm_list_for_each_safe(pos, scratch, head) \
     for(pos = (head)->next, scratch = pos->next; pos != (head); \
 	    pos = scratch, scratch = pos->next)
+#define sorm_list_free(head, free) _list_free(head, (void*)(free))
+
+/**
+ * @brief: free a list, the list Param can be NULL
+ */
+inline void _list_free(sorm_list_t *sorm_list, void (*data_free)(void*));
 
 static inline void _list_add(
 	sorm_list_t *new, sorm_list_t *prev, sorm_list_t *next)

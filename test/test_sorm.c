@@ -309,238 +309,240 @@ static void test_device_select(void)
     }
     device_free(select_device);
 
-    //printf("Start select 0 by select_some_array_by wihout filter\n");
-    //n = 0;
-    ///*avoid to get the row for test_device_select_too_long */
-    //ret = device_select_some_array_by(conn, ALL_COLUMNS, NULL, &n, &select_device);
-    //CU_ASSERT(ret == SORM_NOEXIST);
-    //CU_ASSERT(n == 0);
+    printf("Start select 0 by select_some_array_by wihout filter\n");
+    n = 0;
+    /*avoid to get the row for test_device_select_too_long */
+    ret = device_select_some_array_by(conn, ALL_COLUMNS, NULL, &n, &select_device);
+    CU_ASSERT(ret == SORM_NOEXIST);
+    CU_ASSERT(n == 0);
 
-    //printf("Start select half by select_some_array_by with filter\n");
-    //n = amount * 2;
-    //sprintf(filter, "id < %d", 5);
-    //ret = device_select_some_array_by(conn, ALL_COLUMNS, filter, &n, &select_device);
-    //CU_ASSERT(ret == SORM_OK);
-    //CU_ASSERT(n == 5);
-    //for(i = 0; i < n; i ++)
-    //{
-    //    CU_ASSERT(select_device[i].id == i);
-    //    sprintf(device->uuid,"uuid-%d", i);
-    //    CU_ASSERT(strcmp(device->uuid, select_device[i].uuid) == 0);
-    //    sprintf(device->name,"name-%d", i);
-    //    CU_ASSERT(strcmp(device->name, select_device[i].name) == 0);
-    //    sprintf(device->password, "passwd-%d", i);
-    //    CU_ASSERT(strcmp(device->password, select_device[i].password) == 0);
+    printf("Start select half by select_some_array_by with filter\n");
+    n = amount * 2;
+    sprintf(filter, "id < %d", 5);
+    ret = device_select_some_array_by(conn, ALL_COLUMNS, filter, &n, &select_device);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(n == 5);
+    for(i = 0; i < n; i ++)
+    {
+        CU_ASSERT(select_device[i].id == i);
+        sprintf(device->uuid,"uuid-%d", i);
+        CU_ASSERT(strcmp(device->uuid, select_device[i].uuid) == 0);
+        sprintf(device->name,"name-%d", i);
+        CU_ASSERT(strcmp(device->name, select_device[i].name) == 0);
+        sprintf(device->password, "passwd-%d", i);
+        CU_ASSERT(strcmp(device->password, select_device[i].password) == 0);
 
-    //}
-    //device_free(select_device);
+    }
+    device_free(select_device);
 
-    //printf("Start select all by select_some_array_by without filter\n");
-    //n = amount * 2;
-    //ret = device_select_some_array_by(conn, ALL_COLUMNS, NULL, &n, &select_device);
-    //CU_ASSERT(ret == SORM_OK);
-    //CU_ASSERT(n == amount);
-    //for(i = 0; i < n; i ++)
-    //{
-    //    CU_ASSERT(select_device[i].id == i);
-    //    sprintf(device->uuid,"uuid-%d", i);
-    //    CU_ASSERT(strcmp(device->uuid, select_device[i].uuid) == 0);
-    //    sprintf(device->name,"name-%d", i);
-    //    CU_ASSERT(strcmp(device->name, select_device[i].name) == 0);
-    //    sprintf(device->password, "passwd-%d", i);
-    //    CU_ASSERT(strcmp(device->password, select_device[i].password) == 0);
+    printf("Start select all by select_some_array_by without filter\n");
+    n = amount * 2;
+    ret = device_select_some_array_by(conn, ALL_COLUMNS, NULL, &n, &select_device);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(n == amount);
+    for(i = 0; i < n; i ++)
+    {
+        CU_ASSERT(select_device[i].id == i);
+        sprintf(device->uuid,"uuid-%d", i);
+        CU_ASSERT(strcmp(device->uuid, select_device[i].uuid) == 0);
+        sprintf(device->name,"name-%d", i);
+        CU_ASSERT(strcmp(device->name, select_device[i].name) == 0);
+        sprintf(device->password, "passwd-%d", i);
+        CU_ASSERT(strcmp(device->password, select_device[i].password) == 0);
 
-    //}
-    //device_free(select_device);
+    }
+    device_free(select_device);
 
-    ///*****************************/
-    ///* test select_some_list_by */
-    ///*****************************/
-    //sorm_list_t *select_device_list, *list_head;
+    /*****************************/
+    /* test select_some_list_by */
+    /*****************************/
+    sorm_list_t *select_device_list, *list_head;
 
-    //printf("Start select half by select_some_list_by without filter\n");
-    //n = amount / 2;
-    //ret = device_select_some_list_by(conn, ALL_COLUMNS, NULL, &n, &select_device_list);
-    //CU_ASSERT(ret == SORM_OK);
-    //CU_ASSERT(n == (amount / 2));
-    //i = 0;
-    //sorm_list_for_each(list_head, select_device_list)
-    //{
-    //    select_device = (device_t*)list_head->data;
-    //    CU_ASSERT(select_device->id == i);
-    //    sprintf(device->uuid,"uuid-%d", i);
-    //    CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
-    //    sprintf(device->name,"name-%d", i);
-    //    CU_ASSERT(strcmp(device->name, select_device->name) == 0);
-    //    sprintf(device->password, "passwd-%d", i);
-    //    CU_ASSERT(strcmp(device->password, select_device->password) == 0);
-    //    i ++;
-    //}
+    printf("Start select half by select_some_list_by without filter\n");
+    n = amount / 2;
+    ret = device_select_some_list_by(conn, ALL_COLUMNS, NULL, &n, &select_device_list);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(n == (amount / 2));
+    i = 0;
+    sorm_list_for_each(list_head, select_device_list)
+    {
+        select_device = (device_t*)list_head->data;
+        CU_ASSERT(select_device->id == i);
+        sprintf(device->uuid,"uuid-%d", i);
+        CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
+        sprintf(device->name,"name-%d", i);
+        CU_ASSERT(strcmp(device->name, select_device->name) == 0);
+        sprintf(device->password, "passwd-%d", i);
+        CU_ASSERT(strcmp(device->password, select_device->password) == 0);
+        i ++;
+    }
+    sorm_list_free(select_device_list, free);
 
-    //printf("Start select 0 by select_some_list_by wihout filter\n");
-    //n = 0;
-    ///*avoid to get the row for test_device_select_too_long */
-    //ret = device_select_some_list_by(conn, ALL_COLUMNS, NULL, &n, &select_device_list);
-    //CU_ASSERT(ret == SORM_NOEXIST);
-    //CU_ASSERT(n == 0);
+    printf("Start select 0 by select_some_list_by wihout filter\n");
+    n = 0;
+    /*avoid to get the row for test_device_select_too_long */
+    ret = device_select_some_list_by(conn, ALL_COLUMNS, NULL, &n, &select_device_list);
+    CU_ASSERT(ret == SORM_NOEXIST);
+    CU_ASSERT(n == 0);
 
-    //printf("Start select half by select_some_list_by with filter\n");
-    //n = amount * 2;
-    //sprintf(filter, "id < %d", 5);
-    //ret = device_select_some_list_by(conn, ALL_COLUMNS, filter, &n, &select_device_list);
-    //CU_ASSERT(ret == SORM_OK);
-    //CU_ASSERT(n == 5);
-    //i = 0;
-    //sorm_list_for_each(list_head, select_device_list)
-    //{
-    //    select_device = (device_t*)list_head->data;
-    //    CU_ASSERT(select_device->id == i);
-    //    sprintf(device->uuid,"uuid-%d", i);
-    //    CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
-    //    sprintf(device->name,"name-%d", i);
-    //    CU_ASSERT(strcmp(device->name, select_device->name) == 0);
-    //    sprintf(device->password, "passwd-%d", i);
-    //    CU_ASSERT(strcmp(device->password, select_device->password) == 0);
-    //    i ++;
-    //}
+    printf("Start select half by select_some_list_by with filter\n");
+    n = amount * 2;
+    sprintf(filter, "id < %d", 5);
+    ret = device_select_some_list_by(conn, ALL_COLUMNS, filter, &n, &select_device_list);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(n == 5);
+    i = 0;
+    sorm_list_for_each(list_head, select_device_list)
+    {
+        select_device = (device_t*)list_head->data;
+        CU_ASSERT(select_device->id == i);
+        sprintf(device->uuid,"uuid-%d", i);
+        CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
+        sprintf(device->name,"name-%d", i);
+        CU_ASSERT(strcmp(device->name, select_device->name) == 0);
+        sprintf(device->password, "passwd-%d", i);
+        CU_ASSERT(strcmp(device->password, select_device->password) == 0);
+        i ++;
+    }
+    sorm_list_free(select_device_list, free);
 
-    //printf("Start select all by select_some_list_by without filter\n");
-    //n = amount * 2;
-    //ret = device_select_some_list_by(conn, ALL_COLUMNS, NULL, &n, &select_device_list);
-    //CU_ASSERT(ret == SORM_OK);
-    //CU_ASSERT(n == amount);
-    //i = 0;
-    //sorm_list_for_each(list_head, select_device_list)
-    //{
-    //    select_device = (device_t*)list_head->data;
-    //    CU_ASSERT(select_device->id == i);
-    //    sprintf(device->uuid,"uuid-%d", i);
-    //    CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
-    //    sprintf(device->name,"name-%d", i);
-    //    CU_ASSERT(strcmp(device->name, select_device->name) == 0);
-    //    sprintf(device->password, "passwd-%d", i);
-    //    CU_ASSERT(strcmp(device->password, select_device->password) == 0);
-    //    i ++;
-    //}
+    printf("Start select all by select_some_list_by without filter\n");
+    n = amount * 2;
+    ret = device_select_some_list_by(conn, ALL_COLUMNS, NULL, &n, &select_device_list);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(n == amount);
+    i = 0;
+    sorm_list_for_each(list_head, select_device_list)
+    {
+        select_device = (device_t*)list_head->data;
+        CU_ASSERT(select_device->id == i);
+        sprintf(device->uuid,"uuid-%d", i);
+        CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
+        sprintf(device->name,"name-%d", i);
+        CU_ASSERT(strcmp(device->name, select_device->name) == 0);
+        sprintf(device->password, "passwd-%d", i);
+        CU_ASSERT(strcmp(device->password, select_device->password) == 0);
+        i ++;
+    }
 
-    ///*****************************/
-    ///* test select_all_array_by */
-    ///*****************************/
-    //printf("Start select half by select_all_array_by with filter\n");
-    //n = 0;
-    //sprintf(filter, "id < %d", 5);
-    //ret = device_select_all_array_by(conn, ALL_COLUMNS, filter, &n, &select_device);
-    //CU_ASSERT(ret == SORM_OK);
-    //CU_ASSERT(n == 5);
-    //for(i = 0; i < n; i ++)
-    //{
-    //    CU_ASSERT(select_device[i].id == i);
-    //    sprintf(device->uuid,"uuid-%d", i);
-    //    CU_ASSERT(strcmp(device->uuid, select_device[i].uuid) == 0);
-    //    sprintf(device->name,"name-%d", i);
-    //    CU_ASSERT(strcmp(device->name, select_device[i].name) == 0);
-    //    sprintf(device->password, "passwd-%d", i);
-    //    CU_ASSERT(strcmp(device->password, select_device[i].password) == 0);
-    //}
-    //assert(device != NULL);
-    //device_free(select_device);
+    /*****************************/
+    /* test select_all_array_by */
+    /*****************************/
+    printf("Start select half by select_all_array_by with filter\n");
+    n = 0;
+    sprintf(filter, "id < %d", 5);
+    ret = device_select_all_array_by(conn, ALL_COLUMNS, filter, &n, &select_device);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(n == 5);
+    for(i = 0; i < n; i ++)
+    {
+        CU_ASSERT(select_device[i].id == i);
+        sprintf(device->uuid,"uuid-%d", i);
+        CU_ASSERT(strcmp(device->uuid, select_device[i].uuid) == 0);
+        sprintf(device->name,"name-%d", i);
+        CU_ASSERT(strcmp(device->name, select_device[i].name) == 0);
+        sprintf(device->password, "passwd-%d", i);
+        CU_ASSERT(strcmp(device->password, select_device[i].password) == 0);
+    }
+    assert(device != NULL);
+    device_free(select_device);
 
-    //printf("Start select all by select_all_array_by without filter\n");
-    //n = 0;
-    //ret = device_select_all_array_by(conn, ALL_COLUMNS, NULL, &n, &select_device);
-    //CU_ASSERT(ret == SORM_OK);
-    //CU_ASSERT(n == amount);
-    //for(i = 0; i < n; i ++)
-    //{
-    //    CU_ASSERT(select_device[i].id == i);
-    //    sprintf(device->uuid,"uuid-%d", i);
-    //    CU_ASSERT(strcmp(device->uuid, select_device[i].uuid) == 0);
-    //    sprintf(device->name,"name-%d", i);
-    //    CU_ASSERT(strcmp(device->name, select_device[i].name) == 0);
-    //    sprintf(device->password, "passwd-%d", i);
-    //    CU_ASSERT(strcmp(device->password, select_device[i].password) == 0);
-    //}
-    //assert(device != NULL);
-    //device_free(select_device);
+    printf("Start select all by select_all_array_by without filter\n");
+    n = 0;
+    ret = device_select_all_array_by(conn, ALL_COLUMNS, NULL, &n, &select_device);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(n == amount);
+    for(i = 0; i < n; i ++)
+    {
+        CU_ASSERT(select_device[i].id == i);
+        sprintf(device->uuid,"uuid-%d", i);
+        CU_ASSERT(strcmp(device->uuid, select_device[i].uuid) == 0);
+        sprintf(device->name,"name-%d", i);
+        CU_ASSERT(strcmp(device->name, select_device[i].name) == 0);
+        sprintf(device->password, "passwd-%d", i);
+        CU_ASSERT(strcmp(device->password, select_device[i].password) == 0);
+    }
+    assert(device != NULL);
+    device_free(select_device);
 
-    ///*****************************/
-    ///* test select_all_list_by */
-    ///*****************************/
-    //printf("Start select half by select_all_list_by with filter\n");
-    //n = 0;
-    //sprintf(filter, "id < %d", 5);
-    //ret = device_select_all_list_by(conn, ALL_COLUMNS, filter, &n, &select_device_list);
-    //CU_ASSERT(ret == SORM_OK);
-    //CU_ASSERT(n == 5);
-    //i = 0;
-    //sorm_list_for_each(list_head, select_device_list)
-    //{
-    //    select_device = (device_t*)list_head->data;
-    //    CU_ASSERT(select_device->id == i);
-    //    sprintf(device->uuid,"uuid-%d", i);
-    //    CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
-    //    sprintf(device->name,"name-%d", i);
-    //    CU_ASSERT(strcmp(device->name, select_device->name) == 0);
-    //    sprintf(device->password, "passwd-%d", i);
-    //    CU_ASSERT(strcmp(device->password, select_device->password) == 0);
-    //    i++;
-    //}
-    //assert(device != NULL);
-    //device_free(select_device);
+    /*****************************/
+    /* test select_all_list_by */
+    /*****************************/
+    printf("Start select half by select_all_list_by with filter\n");
+    n = 0;
+    sprintf(filter, "id < %d", 5);
+    ret = device_select_all_list_by(conn, ALL_COLUMNS, filter, &n, &select_device_list);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(n == 5);
+    i = 0;
+    sorm_list_for_each(list_head, select_device_list)
+    {
+        select_device = (device_t*)list_head->data;
+        CU_ASSERT(select_device->id == i);
+        sprintf(device->uuid,"uuid-%d", i);
+        CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
+        sprintf(device->name,"name-%d", i);
+        CU_ASSERT(strcmp(device->name, select_device->name) == 0);
+        sprintf(device->password, "passwd-%d", i);
+        CU_ASSERT(strcmp(device->password, select_device->password) == 0);
+        i++;
+    }
+    assert(device != NULL);
+    device_free(select_device);
 
-    //printf("Start select all by select_all_list_by without filter\n");
-    //n = 0;
-    //ret = device_select_all_list_by(conn, ALL_COLUMNS, NULL, &n, &select_device_list);
-    //CU_ASSERT(ret == SORM_OK);
-    //CU_ASSERT(n == amount);
-    //i = 0;
-    //sorm_list_for_each(list_head, select_device_list)
-    //{
-    //    select_device = (device_t*)list_head->data;
-    //    CU_ASSERT(select_device->id == i);
-    //    sprintf(device->uuid,"uuid-%d", i);
-    //    CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
-    //    sprintf(device->name,"name-%d", i);
-    //    CU_ASSERT(strcmp(device->name, select_device->name) == 0);
-    //    sprintf(device->password, "passwd-%d", i);
-    //    CU_ASSERT(strcmp(device->password, select_device->password) == 0);
-    //    i++;
-    //}
-    //assert(device != NULL);
-    //device_free(select_device);
+    printf("Start select all by select_all_list_by without filter\n");
+    n = 0;
+    ret = device_select_all_list_by(conn, ALL_COLUMNS, NULL, &n, &select_device_list);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(n == amount);
+    i = 0;
+    sorm_list_for_each(list_head, select_device_list)
+    {
+        select_device = (device_t*)list_head->data;
+        CU_ASSERT(select_device->id == i);
+        sprintf(device->uuid,"uuid-%d", i);
+        CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
+        sprintf(device->name,"name-%d", i);
+        CU_ASSERT(strcmp(device->name, select_device->name) == 0);
+        sprintf(device->password, "passwd-%d", i);
+        CU_ASSERT(strcmp(device->password, select_device->password) == 0);
+        i++;
+    }
+    assert(device != NULL);
+    device_free(select_device);
 
-    ///* delete insert values */
-    //for(i = 0; i < amount; i ++)
-    //{
-    //    device_delete_by_id(conn, i);
-    //}
+    /* delete insert values */
+    for(i = 0; i < amount; i ++)
+    {
+        device_delete_by_id(conn, i);
+    }
 
-    ///*****************************/
-    ///* select form empty */
-    ///*****************************/
-    //printf("select by select_some_array_by from empty table\n");
-    //n = amount / 2;
-    //ret = device_select_some_array_by(conn, ALL_COLUMNS, NULL, &n, NULL);
-    //CU_ASSERT(ret == SORM_NOEXIST);
-    //CU_ASSERT(n == 0);
-    //
-    //printf("select by select_some_list_by from empty table\n");
-    //n = amount / 2;
-    //ret = device_select_some_list_by(conn, ALL_COLUMNS, NULL, &n, NULL);
-    //CU_ASSERT(ret == SORM_NOEXIST);
-    //CU_ASSERT(n == 0);
+    /*****************************/
+    /* select form empty */
+    /*****************************/
+    printf("select by select_some_array_by from empty table\n");
+    n = amount / 2;
+    ret = device_select_some_array_by(conn, ALL_COLUMNS, NULL, &n, NULL);
+    CU_ASSERT(ret == SORM_NOEXIST);
+    CU_ASSERT(n == 0);
+    
+    printf("select by select_some_list_by from empty table\n");
+    n = amount / 2;
+    ret = device_select_some_list_by(conn, ALL_COLUMNS, NULL, &n, NULL);
+    CU_ASSERT(ret == SORM_NOEXIST);
+    CU_ASSERT(n == 0);
 
-    //printf("select by select_all_array_by from empty table\n");
-    //ret = device_select_all_array_by(conn, ALL_COLUMNS, NULL, &n, NULL);
-    //CU_ASSERT(ret == SORM_NOEXIST);
-    //CU_ASSERT(n == 0);
-    //
-    //printf("select by select_all_list_by from empty table\n");
-    //ret = device_select_all_list_by(conn, ALL_COLUMNS, NULL, &n, NULL);
-    //CU_ASSERT(ret == SORM_NOEXIST);
-    //CU_ASSERT(n == 0);
+    printf("select by select_all_array_by from empty table\n");
+    ret = device_select_all_array_by(conn, ALL_COLUMNS, NULL, &n, NULL);
+    CU_ASSERT(ret == SORM_NOEXIST);
+    CU_ASSERT(n == 0);
+    
+    printf("select by select_all_list_by from empty table\n");
+    ret = device_select_all_list_by(conn, ALL_COLUMNS, NULL, &n, NULL);
+    CU_ASSERT(ret == SORM_NOEXIST);
+    CU_ASSERT(n == 0);
 
-    //device_free(device);
+    device_free(device);
 }
 
 static void test_device_sql_too_long(void)

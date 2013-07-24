@@ -37,10 +37,7 @@ typedef int(*select_core_t)(const sorm_connection_t*, sqlite3_stmt*,
         int, const sorm_table_descriptor_t**, const int*, const select_columns_t*,
         int, int *, void **);
 
-/**
- * @brief: free a list, the list Param can be NULL
- */
-static inline void _list_free(sorm_list_t *sorm_list, void (*data_free)(void*))
+void _list_free(sorm_list_t *sorm_list, void (*data_free)(void*))
 {
     sorm_list_t *pos, *pre;
 
@@ -57,7 +54,6 @@ static inline void _list_free(sorm_list_t *sorm_list, void (*data_free)(void*))
         }
         free(sorm_list);
     }
-
     //log_debug("Success return.");
 }
 
@@ -2097,7 +2093,7 @@ RETURN :
     {
         for(i = 0; i < tables_num; i ++)
         {
-            _list_free(rows_of_tables[i], mem_free);
+            sorm_list_free(rows_of_tables[i], mem_free);
         }
     }
 
@@ -2204,7 +2200,7 @@ RETURN :
     {
         for(i = 0; i < tables_num; i ++)
         {
-            _list_free(rows_of_tables[i], mem_free);
+            sorm_list_free(rows_of_tables[i], mem_free);
         }
     }
 
@@ -2296,7 +2292,7 @@ int sorm_select_all_array_by(
         if(_get_row == NULL)
         {
             log_debug("New sorm array error");
-            _list_free(row_head, mem_free);
+            sorm_list_free(row_head, mem_free);
             return SORM_NOMEM;
         }
         _list_cpy_free(table_desc, row_head, *n, _get_row, mem_free);
