@@ -1855,6 +1855,18 @@ int test_index(void)
     assert(ret != SORM_OK);
 }
 
+int test_create_drop_conflict(void)
+{
+    int ret; 
+
+    ret = device_create_table(conn);
+    CU_ASSERT(ret == SORM_OK);
+    ret = device_delete_table(conn);
+    CU_ASSERT(ret == SORM_OK);
+    ret = device_create_table(conn);
+    CU_ASSERT(ret == SORM_OK);
+}
+
 
 static CU_TestInfo tests_device[] = {
     {"01.test_device_new", test_device_new},
@@ -1870,6 +1882,7 @@ static CU_TestInfo tests_device[] = {
     {"11.test_select_by_column", test_select_by_column},
     {"12.test_select_null", test_select_null},
     {"13.test_index", test_index},
+    {"14.test_create_drop_conflict", test_create_drop_conflict},
     CU_TEST_INFO_NULL,
 };
 

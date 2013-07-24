@@ -1021,7 +1021,7 @@ int sorm_create_table(
     }
 
     ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1,
-            "CREATE TABLE %s(", table_desc->name);
+            "CREATE TABLE IF NOT EXISTS %s(", table_desc->name);
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
         log_debug("snprintf error while constructing sql statment, "
