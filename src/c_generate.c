@@ -424,7 +424,7 @@ static void c_generate_func_select(
 		    INDENT_TWICE "int *n, %s_t **%ss_array)\n{\n"
 		    INDENT	 "return sorm_select_all_array_by_join(conn, column_names,\n"
 		    INDENT_TRIPLE "&%s_table_descriptor, \"%s\", %s_DESC, \"%s\", \n"
-		    INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, "
+		    INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, \n"
 		    INDENT_TRIPLE "(sorm_table_descriptor_t **)%ss_array, NULL);\n}\n\n",
 		    table_desc->name, table_desc->columns[i].foreign_table_name,
 		    table_desc->name, table_desc->name,
@@ -446,6 +446,20 @@ static void c_generate_func_select(
 	    mem_free(upper_foreign_table_name);
 	}
     }
+}
+
+static void c_generate_func_index(
+        FILE *file, const sorm_table_descriptor_t *table_desc)
+{
+    fprintf(file, "int %s_create_index(\n"
+	    INDENT_TWICE "const sorm_connection_t *conn, char *columns_name)\n{\n"
+	    INDENT	 "return sorm_create_index(conn, &%s_table_descriptor, "
+			 "columns_name);\n}\n\n",
+	    table_desc->name, table_desc->name);
+    fprintf(file, "int %s_drop_index(\n"
+	    INDENT_TWICE "const sorm_connection_t *conn, char *columns_name)\n{\n"
+	    INDENT	 "return sorm_drop_index(conn, columns_name);\n}\n\n",
+	    table_desc->name);
 }
 
 void c_generate(
@@ -494,4 +508,5 @@ void c_generate(
     c_generate_func_set_mem(file, table_desc);
     c_generate_func_delete(file, table_desc);
     c_generate_func_select(file, table_desc);
+    c_generate_func_index(file, table_desc);
 }

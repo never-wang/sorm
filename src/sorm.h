@@ -541,5 +541,11 @@ int sorm_select_all_list_by_join(
         const char *table2_column_name,
         sorm_join_t join, const char *filter, int *n,
         sorm_list_t **table1_row_head, sorm_list_t **table2_row_head);
+int sorm_create_index(
+	const sorm_connection_t *conn, 
+	sorm_table_descriptor_t *table_desc, char *columns_name);
+int sorm_drop_index(
+	const sorm_connection_t *conn,
+	char *columns_name);
 
 #endif

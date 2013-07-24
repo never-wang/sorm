@@ -328,6 +328,17 @@ static void header_generate_func_select(
     }
 }
 
+static void header_generate_func_index(
+        FILE *file, const sorm_table_descriptor_t *table_desc)
+{
+    fprintf(file, "int %s_create_index(\n"
+	    INDENT_TWICE "const sorm_connection_t *conn, char *columns_name);\n",
+	    table_desc->name);
+    fprintf(file, "int %s_drop_index(\n"
+	    INDENT_TWICE "const sorm_connection_t *conn, char *columns_name);\n",
+	    table_desc->name);
+}
+
 void header_generate(
     const sorm_table_descriptor_t *table_desc)
 {
@@ -388,6 +399,7 @@ void header_generate(
     header_generate_func_set_mem(file, table_desc);
     header_generate_func_delete(file, table_desc);
     header_generate_func_select(file, table_desc);
+    header_generate_func_index(file, table_desc);
 
     fprintf(file, "#endif");
     

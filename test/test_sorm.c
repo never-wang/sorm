@@ -1840,6 +1840,19 @@ int test_sorm_foreign_key(void)
     volume_free(volume);
 }
 
+int test_index(void)
+{
+    int ret;
+    ret = device_create_index(conn, "uuid");
+    assert(ret == SORM_OK);
+    ret = device_drop_index(conn, "uuid");
+    assert(ret == SORM_OK);
+    ret = device_drop_index(conn, "uuid");
+    assert(ret != SORM_OK);
+    ret = device_drop_index(conn, "cid");
+    assert(ret != SORM_OK);
+}
+
 
 static CU_TestInfo tests_device[] = {
     {"01.test_device_new", test_device_new},
@@ -1854,6 +1867,7 @@ static CU_TestInfo tests_device[] = {
     {"10.test_select_columns", test_select_columns},
     {"11.test_select_by_column", test_select_by_column},
     {"12.test_select_null", test_select_null},
+    {"13.test_index", test_index},
     CU_TEST_INFO_NULL,
 };
 

@@ -470,7 +470,7 @@ static inline int _get_number_from_columns_name(
 }
 
 /**
- * @brief: give a column_name and some tables, find hte column_name is in which
+ * @brief: give a column_name and some tables, find the column_name is in which
  *	table and in wich column of the table
  *
  * @param tables_num:
@@ -1310,6 +1310,7 @@ int sorm_set_column_value(
     }
 
     column_desc = &table_desc->columns[column_index];
+    assert(column_desc != NULL);
 
     switch(column_desc->type)
     {
@@ -2879,4 +2880,188 @@ int sorm_close(sorm_connection_t *conn)
     
     //log_debug("Success return");
     return SORM_OK;
+}
+
+static inline void _construct_index_suffix(
+	char *index_suffix, char *columns_name)
+{
+    assert(index_suffix != NULL);
+    assert(columns_name != NULL);
+    
+    char *index_suffix_iter, *columns_name_iter;
+    
+    index_suffix_iter = index_suffix;
+    columns_name_iter = columns_name;
+    
+    while((*columns_name_iter) != '\0')
+    {
+	if((*columns_name_iter) == COLUMN_NAMES_DELIMITER)
+	{
+	    (*index_suffix_iter) = '_';
+	    index_suffix_iter ++;
+	}else if((*columns_name_iter) != ' ')
+	{
+	    (*index_suffix_iter) = (*columns_name_iter);
+	    index_suffix_iter ++;
+	}
+	columns_name_iter ++;
+    }
+    (*index_suffix_iter) = '\0';
+}
+
+int sorm_create_index(
+	const sorm_connection_t *conn, 
+	sorm_table_descriptor_t *table_desc, char *columns_name)
+{
+    char sql_stmt[SQL_STMT_MAX_LEN + 1];
+    sqlite3_stmt *stmt_handle = NULL;
+    int offset, columns_name_len;
+    int ret, ret_val, i;
+    char *index_suffix;
+
+    if(conn == NULL)
+    {
+	log_error("Param conn is NULL.");
+	return SORM_ARG_NULL;
+    }
+    if(table_desc == NULL)
+    {
+	log_error("Param table_desc is NULL.");
+	return SORM_ARG_NULL;
+    }
+    if(columns_name == NULL)
+    {
+	log_error("Param columns_name is NULL.");
+	return SORM_ARG_NULL;
+    }
+
+    /* construct the suffix for index name */
+    columns_name_len = strlen(columns_name);
+    index_suffix = mem_malloc(columns_name_len);
+    _construct_index_suffix(index_suffix, columns_name);
+
+    ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1,
+	    "CREATE INDEX index_%s ON %s(%s)", 
+	    index_suffix, table_desc->name, columns_name);
+
+    mem_free(index_suffix);
+    
+    if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+    {
+        log_error("snprintf error while constructing sql statment, "
+                "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
+        return SORM_TOO_LONG;
+    }
+    
+    log_debug("prepare stmt : %s", sql_stmt);
+    
+    ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
+
+    if(ret != SQLITE_OK)
+    {
+        log_error("sqlite3_prepare error : %s", 
+                sqlite3_errmsg(conn->sqlite3_handle));
+        return SORM_DB_ERROR;
+    }
+    
+    ret = _sqlite3_step(conn, stmt_handle);
+
+    if(ret != SQLITE_DONE)
+    {
+        log_debug("sqlite3_step error : %s", 
+                sqlite3_errmsg(conn->sqlite3_handle));
+        ret_val = SORM_DB_ERROR;
+        goto DB_FINALIZE;
+    }
+
+    //log_debug("Success return");
+    ret_val = SORM_OK;
+
+DB_FINALIZE :
+
+    ret = sqlite3_finalize(stmt_handle);
+    if(ret != SQLITE_OK)
+    {
+        log_debug("sqlite3_finalize error : %s", 
+                sqlite3_errmsg(conn->sqlite3_handle));
+        return SORM_DB_ERROR;
+
+    }
+    return ret_val;
+}
+
+int sorm_drop_index(
+	const sorm_connection_t *conn,
+	char *columns_name)
+{
+    char sql_stmt[SQL_STMT_MAX_LEN + 1];
+    sqlite3_stmt *stmt_handle = NULL;
+    int offset, columns_name_len;
+    int ret, ret_val, i;
+    char *index_suffix;
+
+    if(conn == NULL)
+    {
+	log_error("Param conn is NULL.");
+	return SORM_ARG_NULL;
+    }
+    if(columns_name == NULL)
+    {
+	log_error("Param columns_name is NULL.");
+	return SORM_ARG_NULL;
+    }
+
+    /* construct the suffix for index name */
+    columns_name_len = strlen(columns_name);
+    index_suffix = mem_malloc(columns_name_len);
+    _construct_index_suffix(index_suffix, columns_name);
+
+    ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1,
+	    "DROP INDEX index_%s", index_suffix);
+
+    mem_free(index_suffix);
+    
+    if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+    {
+        log_error("snprintf error while constructing sql statment, "
+                "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
+        return SORM_TOO_LONG;
+    }
+    
+    log_debug("prepare stmt : %s", sql_stmt);
+    
+    ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
+
+    if(ret != SQLITE_OK)
+    {
+        log_error("sqlite3_prepare error : %s", 
+                sqlite3_errmsg(conn->sqlite3_handle));
+        return SORM_DB_ERROR;
+    }
+    
+    ret = _sqlite3_step(conn, stmt_handle);
+
+    if(ret != SQLITE_DONE)
+    {
+        log_debug("sqlite3_step error : %s", 
+                sqlite3_errmsg(conn->sqlite3_handle));
+        ret_val = SORM_DB_ERROR;
+        goto DB_FINALIZE;
+    }
+
+    //log_debug("Success return");
+    ret_val = SORM_OK;
+
+DB_FINALIZE :
+
+    ret = sqlite3_finalize(stmt_handle);
+    if(ret != SQLITE_OK)
+    {
+        log_debug("sqlite3_finalize error : %s", 
+                sqlite3_errmsg(conn->sqlite3_handle));
+        return SORM_DB_ERROR;
+
+    }
+    return ret_val;
+    
 }
