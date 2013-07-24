@@ -13,6 +13,7 @@
  *        Company:  HPC Tsinghua
  ***************************************************************************/
 #include <string.h>
+#include <errno.h>
 
 #include "parser_yacc.h"
 #include "stdio.h"
@@ -48,6 +49,12 @@ int main(int argc, char **argv)
 	memset(column_desc, 0, sizeof(sorm_column_descriptor_t));
 
 	yyin = fopen(argv[argv_index], "r");
+
+	if(yyin == NULL)
+	{
+	    printf("Input file(%s) open fail : %s\n", argv[argv_index], strerror(errno));
+	    continue;
+	}
 
 	yyparse();
 	
