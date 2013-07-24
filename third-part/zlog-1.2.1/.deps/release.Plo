@@ -1,0 +1,3 @@
+release.lo: release.c release.h
+
+release.h:
