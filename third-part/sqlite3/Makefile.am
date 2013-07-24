@@ -13,7 +13,6 @@ libsqlite_la_SOURCES = sqlite3.c
 LIBS = -lpthread
 
 
-AM_CFLAGS =  -D@OSSYS@
 # AM_CXXFLAGS =  -DLINUX -std=c++0x
 # noinst_HEADERS = kvstore.h hash.h list.h 
  

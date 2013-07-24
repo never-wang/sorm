@@ -220,7 +220,6 @@ top_builddir = ../..
 top_srcdir = ../..
 noinst_LTLIBRARIES = libsqlite.la
 libsqlite_la_SOURCES = sqlite3.c
-AM_CFLAGS = -D@OSSYS@
 all: all-am
 
 .SUFFIXES:
@@ -503,6 +502,7 @@ uninstall-am:
 	maintainer-clean maintainer-clean-generic mostlyclean \
 	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
 	pdf pdf-am ps ps-am tags uninstall uninstall-am
+
 
 # AM_CXXFLAGS =  -DLINUX -std=c++0x
 # noinst_HEADERS = kvstore.h hash.h list.h 
