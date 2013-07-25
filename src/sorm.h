@@ -21,8 +21,14 @@
 
 #include "sqlite3.h"
 
-/* init flags */
+/* open flags */
 #define SORM_ENABLE_FOREIGN_KEY	    0x1 /* enable foreign key support in sqlite3 */
+#define SORM_ENABLE_SEMAPHORE	    0x2	/* enable semaphore in sorm */
+
+#define sorm_foreign_key_enabled(flags) \
+    ((SORM_ENABLE_FOREIGN_KEY & (flags)) == SORM_ENABLE_FOREIGN_KEY)
+#define sorm_semaphore_enabled(flags) \
+    ((SORM_ENABLE_SEMAPHORE & (flags)) == SORM_ENABLE_SEMAPHORE)
 
 #define SORM_OFFSET(struct, member) offsetof(struct, member)
 #define SORM_SIZE(struct)    sizeof(struct)
@@ -200,6 +206,11 @@ typedef struct sorm_connection_s
 
     sorm_db_t db;    /* database type */
     int transaction_num;    /* deal with transaction nest */
+    
+    /* semaphore */
+    int sem_key;
+
+    int flags;
 
     /* to store pre-prepared transaction statement */
     sqlite3_stmt *begin_trans_stmt;
@@ -308,7 +319,7 @@ void sorm_set_allocator(void *memory_pool,
     void(*free)(void *memory_pool, void *point), 
     char*(*strdup)(void *memory_pool, const char *string));
 
-int sorm_init(int flags);
+int sorm_init();
 void sorm_final();
 
 /**
@@ -316,12 +327,15 @@ void sorm_final();
  *
  * @param path: database file path
  * @param db_type: database type
+ * @param sem_key
+ * @param flags: can be SORM_ENABLE_FOREIGIN_KEY | SORM_ENABLE_SEMAPHORE
  * @param connection: pointer to where stored the new connection
  *
  * @return: SORM_OK; SORM_ARG_NULL, SORM_NOMEM, SORM_DB_ERROR
  */
 int sorm_open(
-        const char *path, sorm_db_t db, sorm_connection_t **connection);
+        const char *path, sorm_db_t db, int sem_key, int flags,
+	sorm_connection_t **connection);
 
 /**
  * @brief: close the connection to a database

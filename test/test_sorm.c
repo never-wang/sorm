@@ -23,6 +23,7 @@
 
 #define DB_FILE "sorm.db"
 #define FILTER_MAX_LEN	127
+#define sem_key 1024
 
 static sorm_connection_t *conn;
 static device_t *device;
@@ -31,12 +32,13 @@ static int suite_sorm_init(void)
 {
     int ret;
 
-    if(sorm_init(SORM_ENABLE_FOREIGN_KEY) != SORM_OK)
+    if(sorm_init() != SORM_OK)
     {
         return -1;
     }
 
-    ret = sorm_open(DB_FILE, SORM_DB_SQLITE, &conn);
+    ret = sorm_open(DB_FILE, SORM_DB_SQLITE, sem_key, 
+	    SORM_ENABLE_SEMAPHORE | SORM_ENABLE_FOREIGN_KEY, &conn);
 
     if(ret != SORM_OK)
     {
@@ -1803,7 +1805,7 @@ static void test_sorm_unique(void)
     device_free(device);
 }
 
-int test_sorm_foreign_key(void)
+static void test_sorm_foreign_key(void)
 {
     device_t *device;
     volume_t *volume;
@@ -1842,7 +1844,7 @@ int test_sorm_foreign_key(void)
     volume_free(volume);
 }
 
-int test_index(void)
+static void test_index(void)
 {
     int ret;
     ret = device_create_index(conn, "uuid");
@@ -1855,7 +1857,7 @@ int test_index(void)
     assert(ret != SORM_OK);
 }
 
-int test_create_drop_conflict(void)
+static void test_create_drop_conflict(void)
 {
     int ret; 
 

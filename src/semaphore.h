@@ -18,10 +18,10 @@ union semun {
     (Linux specific) */
 };
 
-int sem_init();
+int sem_init(int sem_id);
 void sem_final();
-int sem_p();
-int sem_v();
+int sem_p(int sem_key);
+int sem_v(int sem_Key);
 
 
 

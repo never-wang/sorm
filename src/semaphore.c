@@ -5,14 +5,15 @@
 #include "semaphore.h"
 #include "log.h"
 
-static int sem_id;
 
-int sem_init()
+int sem_init(int sem_key)
 {
     union semun sem_union;
-    sem_id = semget(SEM_KEY, 1, 0);
+    int sem_id; 
+
+    sem_id = semget(sem_key, 1, 0);
     if(sem_id == -1){   /* need create a new one */
-        sem_id = semget(SEM_KEY, 1, 0666 | IPC_CREAT);
+        sem_id = semget(sem_key, 1, 0666 | IPC_CREAT);
         sem_union.val = 1;
         if(semctl(sem_id, 0, SETVAL, sem_union) == -1){
             printf("semctl fail : %s\n", strerror(errno));
@@ -33,9 +34,21 @@ void sem_final()
     //semctl(sem_id, 0, IPC_RMID, sem_union);
 }
 
-int sem_p()
+int sem_p(int sem_key)
 {
     struct sembuf sem_b;
+    union semun sem_union;
+    int sem_id;
+
+    sem_id = semget(sem_key, 1, 0);
+    if(sem_id == -1){   /* need create a new one */
+        sem_id = semget(sem_key, 1, 0666 | IPC_CREAT);
+        sem_union.val = 1;
+        if(semctl(sem_id, 0, SETVAL, sem_union) == -1){
+            printf("semctl fail : %s\n", strerror(errno));
+            return SEM_INIT_FAIL;
+        }
+    }
 
     sem_b.sem_num = 0;
     sem_b.sem_op = -1;
@@ -48,9 +61,21 @@ int sem_p()
     return SEM_OK;
 }
 
-int sem_v()
+int sem_v(int sem_key)
 {
     struct sembuf sem_b;
+    union semun sem_union;
+    int sem_id;
+    
+    sem_id = semget(sem_key, 1, 0);
+    if(sem_id == -1){   /* need create a new one */
+        sem_id = semget(sem_key, 1, 0666 | IPC_CREAT);
+        sem_union.val = 1;
+        if(semctl(sem_id, 0, SETVAL, sem_union) == -1){
+            printf("semctl fail : %s\n", strerror(errno));
+            return SEM_INIT_FAIL;
+        }
+    }
 
     sem_b.sem_num = 0;
     sem_b.sem_op = 1;

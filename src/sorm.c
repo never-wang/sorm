@@ -21,8 +21,6 @@
 #include "log.h"
 #include "semaphore.h"
 
-static int foreign_key_enabled = 0;
-
 #define _list_cpy_free(desc, head, n, rows, free) \
     __list_cpy_free(desc, head, n, rows, (void*)(free))
 
@@ -306,17 +304,19 @@ static inline int  _sqlite3_step(
 {
     int ret;
 
-    if(conn->transaction_num == 0) /* no transaction */
+    if((conn->transaction_num == 0) && 
+	    (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
     {
-        sem_p();
+        sem_p(conn->sem_key);
     }
 
 
     ret = sqlite3_step(stmt_handle);
     
-    if(conn->transaction_num == 0) /* no transaction */
+    if((conn->transaction_num == 0) && 
+	    (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
     {
-        sem_v();
+        sem_v(conn->sem_key);
     }
 
     return ret;
@@ -326,19 +326,22 @@ static inline int _sqlite3_prepare(
         const sorm_connection_t *conn, char *sql_stmt, sqlite3_stmt **stmt_handle)
 {
     int ret;
-
-    if(conn->transaction_num == 0) /* no transaction */
+    assert(conn != NULL);
+    
+    if((conn->transaction_num == 0) && 
+	    (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
     {
-        sem_p();
+        sem_p(conn->sem_key);
     }
 
 
     ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, SQL_STMT_MAX_LEN,
             stmt_handle, NULL);
     
-    if(conn->transaction_num == 0) /* no transaction */
+    if((conn->transaction_num == 0) && 
+	    (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
     {
-        sem_v();
+        sem_v(conn->sem_key);
     }
 
     return ret;
@@ -890,7 +893,7 @@ void sorm_set_allocator(void *memory_pool,
     mem_set_allocator(memory_pool, _alloc, _free, _strdup);
 }
 
-int sorm_init(int flags)
+int sorm_init()
 {
     if(log_init() != LOG_OK)
     {
@@ -898,16 +901,11 @@ int sorm_init(int flags)
         return SORM_INIT_FAIL;
     }
 
-    if(sem_init() != SEM_OK)
-    {
-        error("semaphore init fail.");
-        return SORM_INIT_FAIL;
-    }
-
-    if((flags & SORM_ENABLE_FOREIGN_KEY) == SORM_ENABLE_FOREIGN_KEY)
-    {
-	foreign_key_enabled = 1;
-    }
+    //if(sem_init() != SEM_OK)
+    //{
+    //    error("semaphore init fail.");
+    //    return SORM_INIT_FAIL;
+    //}
 
     return SORM_OK;
 }
@@ -919,7 +917,8 @@ void sorm_final()
 }
 
 int sorm_open(
-        const char *path, sorm_db_t db, sorm_connection_t **connection)
+        const char *path, sorm_db_t db, int sem_key, int flags,
+	sorm_connection_t **connection)
 {
     sorm_connection_t *_connection = NULL;
     int ret, ret_val;
@@ -959,11 +958,10 @@ int sorm_open(
         return SORM_DB_ERROR;
     }
 
-    *connection = _connection;
-    
-    if(foreign_key_enabled == 1)
+    if((flags & SORM_ENABLE_FOREIGN_KEY) == SORM_ENABLE_FOREIGN_KEY)
     {
-	ret = _sqlite3_prepare(_connection, "PRAGMA foreign_keys = ON", &stmt_handle);
+	ret = _sqlite3_prepare(_connection, "PRAGMA foreign_keys = ON", 
+		&stmt_handle);
 
 	if(ret != SQLITE_OK)
 	{
@@ -990,8 +988,19 @@ int sorm_open(
 		    sqlite3_errmsg(_connection->sqlite3_handle));
 	    return SORM_DB_ERROR;
 	}
-	return ret_val;
+	if(ret_val != SORM_OK)
+	{
+	    return ret_val;
+	}
     }
+
+    if((flags & SORM_ENABLE_SEMAPHORE) == SORM_ENABLE_SEMAPHORE)
+    {
+	_connection->sem_key = sem_key;
+    }
+    _connection->flags = flags;
+    
+    *connection = _connection;
 
     return SORM_OK;
     /* foreign key support */
@@ -1078,7 +1087,7 @@ int sorm_create_table(
     }
 
     /* foreign key */
-    if(foreign_key_enabled == 1)
+    if((SORM_ENABLE_FOREIGN_KEY & conn->flags) == SORM_ENABLE_FOREIGN_KEY)
     {
 	for(i = 0; i < table_desc->columns_num; i ++)
 	{
@@ -1377,6 +1386,11 @@ int sorm_save(
     if(table_desc == NULL)
     {
         log_error("Param desc is NULL");
+        return SORM_ARG_NULL;
+    }
+    if(conn == NULL)
+    {
+        log_error("Param conn is NULL");
         return SORM_ARG_NULL;
     }
 
@@ -2535,7 +2549,10 @@ int sorm_begin_transaction(sorm_connection_t *conn)
 
     if(conn->transaction_num == 0) /* first transaction */
     {
-        sem_p();
+	if(sorm_semaphore_enabled(conn->flags) == 1)
+	{
+	    sem_p(conn->sem_key);
+	}
         if(conn->begin_trans_stmt == NULL)
         {
             ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1, 
@@ -2641,7 +2658,10 @@ int sorm_commit_transaction(sorm_connection_t *conn)
         }
 
         ret = sqlite3_step(stmt_handle);
-        sem_v();
+	if(sorm_semaphore_enabled(conn->flags) == 1)
+	{
+	    sem_v(conn->sem_key);
+	}
 
         if(ret != SQLITE_DONE)
         {
@@ -2709,7 +2729,10 @@ int sorm_rollback_transaction(sorm_connection_t *conn)
         }
 
         ret = sqlite3_step(stmt_handle);
-        sem_v();
+	if(sorm_semaphore_enabled(conn->flags) == 1)
+	{
+	    sem_v(conn->sem_key);
+	}
 
         if(ret != SQLITE_DONE)
         {

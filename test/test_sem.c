@@ -19,7 +19,7 @@
 #include "device_sorm.h"
 
 #define DB_FILE "test.db"
-
+#define SEM_KEY 1025
 
 int main()
 {
@@ -40,7 +40,8 @@ int main()
         return -1;
     }
 
-    ret = sorm_open(DB_FILE, SORM_DB_SQLITE, &conn);
+    ret = sorm_open(DB_FILE, SORM_DB_SQLITE, SEM_KEY,
+	    SORM_ENABLE_SEMAPHORE, &conn);
 
     if(ret != SORM_OK)
     {
