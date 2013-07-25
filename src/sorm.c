@@ -24,6 +24,15 @@
 #define _list_cpy_free(desc, head, n, rows, free) \
     __list_cpy_free(desc, head, n, rows, (void*)(free))
 
+/** @brief: type to string which is used in sql statement */
+static const char* sorm_type_db_str[] = 
+{
+    "INTEGER",	    /* 0 - SORM_TYPE_INT32 */
+    //"INTEGER",	    /* 1 - SORM_TYPE_INT64 */
+    "TEXT",	    /* 2 - SORM_TYPE_TEXT */
+    "REAL",	    /* 3 - SORM_TYPE_DOUBLE */
+};
+
 /** @brief: used to store the information for selected columns in a table */
 typedef struct
 {
@@ -2227,7 +2236,7 @@ int sorm_select_some_array_by(
         int *rows_num, sorm_table_descriptor_t **rows_p)
 {
     int ret;
-    sorm_table_descriptor_t *rows;
+    sorm_table_descriptor_t *rows = NULL;
     int is_tables_select;
 
     //log_debug("Start.");
@@ -2252,7 +2261,7 @@ int sorm_select_some_list_by(
         int *rows_num, sorm_list_t **rows_head_p)
 {
     int ret;
-    sorm_list_t *rows_head;
+    sorm_list_t *rows_head = NULL;
     int is_table_select;
 
     is_table_select = (rows_head_p == NULL) ? 0 : 1;
@@ -2323,7 +2332,7 @@ int sorm_select_all_list_by(
         int *rows_num, sorm_list_t **rows_head_p)
 {
     int ret;
-    sorm_list_t *rows_head;
+    sorm_list_t *rows_head = NULL;
     int is_table_select;
 
     is_table_select = (rows_head_p == NULL) ? 0 : 1;
@@ -2352,7 +2361,7 @@ int sorm_select_some_array_by_join(
         sorm_table_descriptor_t **table2_rows)
 {
     int ret;
-    sorm_table_descriptor_t *rows[2];
+    sorm_table_descriptor_t *rows[2] = { NULL, NULL };
     const sorm_table_descriptor_t *tables_desc[2];
     const char *tables_column_name[2];
     int is_tables_select[2];
@@ -2394,7 +2403,7 @@ int sorm_select_some_list_by_join(
         sorm_list_t **table2_rows_head)
 {
     int ret;
-    sorm_list_t *rows_head[2];
+    sorm_list_t *rows_head[2] = { NULL, NULL};
     const sorm_table_descriptor_t *tables_desc[2];
     const char *tables_column_name[2];
     int is_tables_select[2];
@@ -2501,7 +2510,7 @@ int sorm_select_all_list_by_join(
         sorm_list_t **table1_rows_head, sorm_list_t **table2_rows_head)
 {
     int ret;
-    sorm_list_t *rows_head[2];
+    sorm_list_t *rows_head[2] = { NULL, NULL};
     const sorm_table_descriptor_t *tables_desc[2];
     const char *tables_column_name[2];
     int is_tables_select[2];

@@ -219,7 +219,7 @@ typedef struct sorm_connection_s
     //sqlite3_stmt *rollback_trans_stmt;
 } sorm_connection_t;
 
-static char* const sorm_errorstr[] = 
+static const char* sorm_errorstr[] = 
 {
     "There is no error",        /* 0 - SORM_OK */
     "Can not allocate memory",	/* 1 - SORM_NOMEM */
@@ -247,17 +247,7 @@ static inline const char* sorm_db_strerror(sorm_connection_t *conn)
     return sqlite3_errmsg(conn->sqlite3_handle);
 }
 
-
-/** @brief: type to string which is used in sql statement */
-static char* sorm_type_db_str[] = 
-{
-    "INTEGER",	    /* 0 - SORM_TYPE_INT32 */
-    //"INTEGER",	    /* 1 - SORM_TYPE_INT64 */
-    "TEXT",	    /* 2 - SORM_TYPE_TEXT */
-    "REAL",	    /* 3 - SORM_TYPE_DOUBLE */
-};
-
-static char* const sorm_joinstr[] =
+static const char* sorm_joinstr[] =
 {
     "SORM_INNER_JOIN",
     "SORM_LEFT_JOIN",
@@ -268,7 +258,7 @@ static inline const char* sorm_strjoin(sorm_join_t join)
     return sorm_joinstr[join];
 }
 
-static char* const sorm_typestr[] =
+static const char* sorm_typestr[] =
 {
     "SORM_TYPE_INT",
     "SORM_TYPE_TEXT",
@@ -280,7 +270,7 @@ static inline const char* sorm_strtype(sorm_type_t type)
     return sorm_typestr[type];
 }
 
-static char* const sorm_memstr[] =
+static const char* sorm_memstr[] =
 {
     "SORM_MEM_NONE",
     "SORM_MEM_HEAP",
@@ -292,7 +282,7 @@ static inline const char* sorm_strmem(sorm_mem_t mem)
     return sorm_memstr[mem];
 }
 
-static char* const sorm_constraintstr[] =
+static const char* sorm_constraintstr[] =
 {
     "SORM_CONSTRAINT_NONE",
     "SORM_CONSTRAINT_PK",

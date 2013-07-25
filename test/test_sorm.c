@@ -143,6 +143,7 @@ static void test_device_ssd(void)
     ret = device_select_by_id(conn, ALL_COLUMNS, 1, &get_device);
     CU_ASSERT(ret == SORM_NOEXIST);
     device_free(get_device);
+    get_device = NULL;
 }
 
 static void test_device_free(void)
@@ -748,6 +749,7 @@ static void test_select_columns()
     int amount = 10;
     int n, ret;
     device_t *select_device;
+    sorm_list_t *device_list;
     char filter[FILTER_MAX_LEN + 1];
 
     /*insert some value for select*/
@@ -829,8 +831,18 @@ static void test_select_columns()
 
 
     printf("select invalid column \n");
+    ret = device_select_some_array_by(conn, "invalid", NULL, &n, &select_device);
+    CU_ASSERT(ret == SORM_DB_ERROR);
+    CU_ASSERT(select_device == NULL);
     ret = device_select_all_array_by(conn, "invalid", NULL, &n, &select_device);
     CU_ASSERT(ret == SORM_DB_ERROR);
+    CU_ASSERT(select_device == NULL);
+    ret = device_select_some_list_by(conn, "invalid", NULL, &n, &device_list);
+    CU_ASSERT(ret == SORM_DB_ERROR);
+    CU_ASSERT(select_device == NULL);
+    ret = device_select_all_list_by(conn, "invalid", NULL, &n, &device_list);
+    CU_ASSERT(ret == SORM_DB_ERROR);
+    CU_ASSERT(select_device == NULL);
 
     for(i = 0; i < amount; i ++)
     {
@@ -1477,6 +1489,7 @@ static void test_volume_select_by_driver(void)
     int i, n, ret;
     device_t *select_device;
     volume_t *select_volume;
+    sorm_list_t *list;
     int device_index[6]={0, 0, 1, 1, 2, 3};
     int volume_index[6]={0, 3, 1, 4, 2, 0};
 
@@ -1587,6 +1600,20 @@ static void test_volume_select_by_driver(void)
     device_free(device);
     volume_free(volume);
 
+
+    printf("select invalid column \n");
+    ret = volume_select_some_array_by(conn, "invalid", NULL, &n, &select_volume);
+    CU_ASSERT(ret == SORM_DB_ERROR);
+    CU_ASSERT(select_volume == NULL);
+    ret = volume_select_all_array_by(conn, "invalid", NULL, &n, &select_volume);
+    CU_ASSERT(ret == SORM_DB_ERROR);
+    CU_ASSERT(select_volume == NULL);
+    ret = volume_select_some_list_by(conn, "invalid", NULL, &n, &list);
+    CU_ASSERT(ret == SORM_DB_ERROR);
+    CU_ASSERT(list == NULL);
+    ret = volume_select_all_list_by(conn, "invalid", NULL, &n, &list);
+    CU_ASSERT(ret == SORM_DB_ERROR);
+    CU_ASSERT(list == NULL);
 }
 
 static void test_sorm_select_null_by_join(void)
