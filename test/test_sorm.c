@@ -289,12 +289,12 @@ static void test_device_select_too_long(void)
     ret = device_select_by_id(conn, ALL_COLUMNS, 3, &get_device);
     CU_ASSERT(ret == SORM_TOO_LONG);
 
-    //ret = device_delete_by_id(conn, 1);
-    //CU_ASSERT(ret == SORM_OK);
-    //ret = device_delete_by_id(conn, 2);
-    //CU_ASSERT(ret == SORM_OK);
-    //ret = device_delete_by_id(conn, 3);
-    //CU_ASSERT(ret == SORM_OK);
+    ret = device_delete_by_id(conn, 1);
+    CU_ASSERT(ret == SORM_OK);
+    ret = device_delete_by_id(conn, 2);
+    CU_ASSERT(ret == SORM_OK);
+    ret = device_delete_by_id(conn, 3);
+    CU_ASSERT(ret == SORM_OK);
 }
 static void test_device_select(void)
 {
@@ -643,6 +643,34 @@ static void test_transaction(void)
     int n, ret;
     device_t *select_device, *get_device;
     char filter[FILTER_MAX_LEN + 1];
+    
+    
+    char buf[123];
+    ret = sorm_begin_transaction(conn);
+    for(i = 0; i < 10; i ++)
+    {
+        device = device_new();
+        sprintf(buf, "uuid-%d", i);
+        device_set_uuid(device, buf);
+        sprintf(buf, "name-%d", i);
+        device_set_name(device,buf);
+        ret = device_save(conn, device);
+        CU_ASSERT(ret == SORM_OK);
+        device_free(device);
+    }
+
+    ret = sorm_commit_transaction(conn);
+
+    ret = device_select_all_array_by(conn, "*", NULL, &n, &select_device);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(n == 10);
+    for(i = 0; i < 10; i ++)
+    {
+        sprintf(buf, "uuid-%d", i);
+        CU_ASSERT(strcmp(select_device[i].uuid, buf) == 0);
+        sprintf(buf, "name-%d", i);
+        CU_ASSERT(strcmp(select_device[i].name, buf) == 0);
+    }
 
     device = device_new();
 

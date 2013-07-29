@@ -308,17 +308,21 @@ static inline int _sqlite3_column(
         case SORM_TYPE_TEXT :
             if(column_desc->mem == SORM_MEM_HEAP)
             {
-                text = mem_strdup((char *)sqlite3_column_text(stmt_handle, 
-                            result_index));
-                *(char **)((char*)table_desc + column_desc->offset) = text; 
+                text = mem_strdup((char *)sqlite3_column_text(
+                            stmt_handle, result_index));
+                *(char **)((char*)table_desc + column_desc->offset) = 
+                    text; 
             }else if(column_desc->mem == SORM_MEM_STACK)
             {
-                text = (char *)sqlite3_column_blob(stmt_handle, result_index);
+                text = (char *)sqlite3_column_blob(
+                        stmt_handle, result_index);
                 if(text != NULL)
                 {
-                    ret = snprintf((char*)table_desc + column_desc->offset, 
-                            column_desc->max_len + 1, "%s",
-                            (char *)sqlite3_column_text(stmt_handle, result_index));
+                    text = (char *)sqlite3_column_text(
+                            stmt_handle, result_index);
+                    ret = snprintf((char*)table_desc + 
+                            column_desc->offset, 
+                            column_desc->max_len + 1, "%s", text);
                     offset = ret;
                     if(ret < 0 || offset > column_desc->max_len)
                     {
