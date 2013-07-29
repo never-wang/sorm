@@ -160,16 +160,16 @@ static void c_generate_func_set_mem(
                         table_desc->name, table_desc->name, 
                         table_desc->columns[i].name);
                 fprintf(file, INDENT "return sorm_set_column_value("
-                        "(sorm_table_descriptor_t*)%s, %d, &%s);\n",
+                        "(sorm_table_descriptor_t*)%s, %d, &%s, 0);\n",
                         table_desc->name, i, table_desc->columns[i].name);
                 break;
             case SORM_TYPE_TEXT :
-                fprintf(file, "int %s_set_%s(%s_t *%s, char* %s)\n{\n", 
+                fprintf(file, "int %s_set_%s(%s_t *%s, const char* %s)\n{\n", 
                         table_desc->name, table_desc->columns[i].name, 
                         table_desc->name, table_desc->name, 
                         table_desc->columns[i].name);
                 fprintf(file, INDENT "return sorm_set_column_value("
-                        "(sorm_table_descriptor_t*)%s, %d, %s);\n",
+                        "(sorm_table_descriptor_t*)%s, %d, %s, 0);\n",
                         table_desc->name, i, table_desc->columns[i].name);
                 break;
             case SORM_TYPE_DOUBLE :
@@ -178,7 +178,16 @@ static void c_generate_func_set_mem(
                         table_desc->name, table_desc->name, 
                         table_desc->columns[i].name);
                 fprintf(file, INDENT "return sorm_set_column_value("
-                        "(sorm_table_descriptor_t*)%s, %d, &%s);\n",
+                        "(sorm_table_descriptor_t*)%s, %d, &%s, 0);\n",
+                        table_desc->name, i, table_desc->columns[i].name);
+                break;
+            case SORM_TYPE_BLOB :
+                fprintf(file, "int %s_set_%s(%s_t *%s, const void* %s, int len)\n{\n", 
+                        table_desc->name, table_desc->columns[i].name, 
+                        table_desc->name, table_desc->name, 
+                        table_desc->columns[i].name);
+                fprintf(file, INDENT "return sorm_set_column_value("
+                        "(sorm_table_descriptor_t*)%s, %d, %s, len);\n",
                         table_desc->name, i, table_desc->columns[i].name);
                 break;
             default :
@@ -240,6 +249,8 @@ static void c_generate_func_delete(
                             "%d, (void *)&%s);\n",
                             table_desc->name, i, table_desc->columns[i].name);
                     break;
+                case SORM_TYPE_BLOB :
+		    break;
                 default :
                     error("Invalid SORM_TYPE.");
                     exit(0);
@@ -316,6 +327,8 @@ static void c_generate_func_select(
                             table_desc->name, i, table_desc->columns[i].name, 
                             table_desc->name);
                     break;
+                case SORM_TYPE_BLOB :
+		    break;
                 default :
                     error("Invalid SORM_TYPE.");
                     exit(0);

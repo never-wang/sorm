@@ -19,6 +19,7 @@ extern int yylval;
 "UNIQUE"            { return UNIQUE; }
 "FOREIGN KEY"	    { return FOREIGN_KEY; }
 "REFERENCES"        { return REFERENCES; }
+"BLOB"		    { return BLOB; }
 [a-z_]+              { yylval = strdup(yytext); return NAME; }
 [0-9]+              { yylval = strdup(yytext); return NUMBER; }
 %%

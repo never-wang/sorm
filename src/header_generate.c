@@ -35,6 +35,11 @@ static void header_generate_struct(
 
     for(i = 0; i < table_desc->columns_num; i ++)
     {
+	if(table_desc->columns[i].type == SORM_TYPE_BLOB)
+	{
+	    fprintf(file, INDENT "int         %s_len;\n",
+		    table_desc->columns[i].name);
+	}
         fprintf(file, INDENT "sorm_stat_t %s_stat;\n",
                 table_desc->columns[i].name);
 
@@ -70,6 +75,29 @@ static void header_generate_struct(
             case SORM_TYPE_DOUBLE :
                 fprintf(file, INDENT "double      %s;\n\n",
                         table_desc->columns[i].name);
+                break;
+            case SORM_TYPE_BLOB :
+                if(table_desc->columns[i].mem == SORM_MEM_HEAP)
+                {
+                    fprintf(file, INDENT "void*       %s;\n\n",
+                            table_desc->columns[i].name);
+                }else if(table_desc->columns[i].mem == SORM_MEM_STACK)
+                {
+                    upper_column_name = mem_malloc(
+                            strlen(table_desc->columns[i].name) + 1);
+                    case_lower2upper(
+                            table_desc->columns[i].name, upper_column_name);
+
+                    fprintf(file, INDENT "char        %s[%s_%s_MAX_LEN + 1];\n\n",
+                            table_desc->columns[i].name,
+                            upper_table_name, upper_column_name);
+                    mem_free(upper_column_name);
+                    upper_column_name = NULL;
+                }else
+                {
+                    error("Invalid SORM_MEM.");
+                    exit(0);
+                }
                 break;
             default :
                 error("Invalid SORM_TYPE.");
@@ -138,7 +166,7 @@ static void header_generate_func_set_mem(
                         table_desc->columns[i].name);
                 break;
             case SORM_TYPE_TEXT :
-                fprintf(file, "int %s_set_%s(%s_t *%s, char* %s);\n", 
+                fprintf(file, "int %s_set_%s(%s_t *%s, const char* %s);\n", 
                         table_desc->name, table_desc->columns[i].name, 
                         table_desc->name, table_desc->name, 
                         table_desc->columns[i].name);
@@ -148,6 +176,12 @@ static void header_generate_func_set_mem(
                         table_desc->name, table_desc->columns[i].name, 
                         table_desc->name, table_desc->name, 
                         table_desc->columns[i].name);
+            case SORM_TYPE_BLOB :
+                fprintf(file, "int %s_set_%s(%s_t *%s, const void* %s, int len);\n", 
+                        table_desc->name, table_desc->columns[i].name, 
+                        table_desc->name, table_desc->name, 
+                        table_desc->columns[i].name);
+                break;
                 break;
             default :
                 error("Invalid SORM_TYPE.");
@@ -194,6 +228,8 @@ static void header_generate_func_delete(
                             table_desc->columns[i].name, 
                             table_desc->columns[i].name);
                     break;
+		case SORM_TYPE_BLOB :
+		    break;
                 default :
                     error("Invalid SORM_TYPE.");
                     exit(0);
@@ -245,6 +281,8 @@ static void header_generate_func_select(
                             table_desc->columns[i].name, 
 			    table_desc->name, table_desc->name);
                     break;
+		case SORM_TYPE_BLOB :
+		    break;
                 default :
                     error("Invalid SORM_TYPE.");
                     exit(0);
@@ -355,7 +393,7 @@ void header_generate(
         case_lower2upper(table_desc->columns[i].name, upper_column_name);
         fprintf(file, "#define %s_%s_MAX_LEN %d\n", 
                 upper_table_name, upper_column_name, 
-                table_desc->columns[i].text_max_len);
+                table_desc->columns[i].max_len);
         free(upper_column_name);
         upper_column_name = NULL;
     }

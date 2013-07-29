@@ -42,6 +42,7 @@ static sorm_list_t *sorm_list_entry = NULL;
 %token NUMBER
 %token FOREIGN_KEY
 %token REFERENCES
+%token BLOB
 
 %%
 
@@ -79,6 +80,8 @@ column_type :
            { column_desc->type = SORM_TYPE_TEXT; }
             | REAL
            { column_desc->type = SORM_TYPE_DOUBLE; }
+	    | blob_type
+	   { column_desc->type = SORM_TYPE_BLOB; }
 	   ;
 
 text_type :
@@ -86,7 +89,15 @@ text_type :
           { column_desc->mem = SORM_MEM_HEAP; }
           | TEXT LEFT_DASH NUMBER RIGHT_DASH
           { column_desc->mem = SORM_MEM_STACK;
-            column_desc->text_max_len = atoi($3); }
+            column_desc->max_len = atoi($3); }
+	    ;
+
+blob_type :
+          BLOB
+          { column_desc->mem = SORM_MEM_HEAP; }
+          | BLOB LEFT_DASH NUMBER RIGHT_DASH
+          { column_desc->mem = SORM_MEM_STACK;
+            column_desc->max_len = atoi($3); }
 	    ;
 
 column_constraint :

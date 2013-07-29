@@ -137,7 +137,8 @@ typedef enum
     SORM_TYPE_INT	=   0,
     //SORM_TYPE_INT64,
     SORM_TYPE_TEXT,
-    SORM_TYPE_DOUBLE
+    SORM_TYPE_DOUBLE,
+    SORM_TYPE_BLOB,	/* BLOB TYPE, for binary data */
 } sorm_type_t;
 
 /** @brief: memory type for string */
@@ -177,8 +178,10 @@ typedef struct sorm_column_descriptor_s
     uint32_t index;    /* index of the column, start form 0 */
     sorm_type_t type;  /* data type of the column */
     sorm_constraint_t constraint;	    /* such as PRIMARY KEY, UNIQUE */
-    sorm_mem_t mem;      /* useful only when cloumn type is SROM_TYPE_TEXT */
-    int text_max_len; /* useful only when cloumn type is SROM_TYPE_TEXT */
+    sorm_mem_t mem;      /* useful only when cloumn type is SROM_TYPE_TEXT 
+                            and SORM_TYPE_BLOB*/
+    int max_len; /* useful only when cloumn type is SORM_TYPE_TEXT and 
+                    SORM_TYPE_BLOB*/
     size_t offset;  /* offset of the column in table structure */
     int is_foreign_key;	/* indicates whether this is a foreign key */
     char *foreign_table_name; /* name of foreign table */
@@ -263,6 +266,7 @@ static const char* sorm_typestr[] =
     "SORM_TYPE_INT",
     "SORM_TYPE_TEXT",
     "SORM_TYPE_DOUBLE",
+    "SORM_TYPE_BLOB",
 };
 
 static inline const char* sorm_strtype(sorm_type_t type)
@@ -377,7 +381,7 @@ sorm_new(
 sorm_table_descriptor_t * 
 sorm_new_array(
         const sorm_table_descriptor_t *init_table_desc, int num);
-/**
+/**q
  * @brief: free the momery for the sorm object
  *
  * @param table_desc: the pointer to the sorm object
@@ -390,12 +394,13 @@ void sorm_free(
  * @param table_desc: pointer to the sorm object
  * @param column_index: the index of the column which is to be set a value
  * @param value: pointer to the value that is to be set to the column
+ * @param value_len : only used for SOMR_TYPE_BLOB
  *
  * @return: SORM_OK; SORM_ARG_NULL, SORM_INVALID_MEM, SORM_INVALID_TYPE, SORM_NOMEM
  */
 int sorm_set_column_value(
         sorm_table_descriptor_t *table_desc, 
-        int column_index, void *value);
+        int column_index, const void *value, int value_len);
 /**
  * @brief: insert a new row or update a row in a table
  *

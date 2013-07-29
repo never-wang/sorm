@@ -28,9 +28,9 @@
 static const char* sorm_type_db_str[] = 
 {
     "INTEGER",	    /* 0 - SORM_TYPE_INT32 */
-    //"INTEGER",	    /* 1 - SORM_TYPE_INT64 */
-    "TEXT",	    /* 2 - SORM_TYPE_TEXT */
-    "REAL",	    /* 3 - SORM_TYPE_DOUBLE */
+    "TEXT",	    /* 1 - SORM_TYPE_TEXT */
+    "REAL",	    /* 2 - SORM_TYPE_DOUBLE */
+    "BLOB",	    /* 3 - SORM_TYPE_BLOB */
 };
 
 /** @brief: used to store the information for selected columns in a table */
@@ -118,6 +118,26 @@ static inline void _set_column_stat(
                       table_desc->columns[column_index].offset 
                       - sizeof(sorm_stat_t))) = stat;
 }
+
+static inline int _get_blob_len(
+	const sorm_table_descriptor_t *table_desc, int column_index)
+{
+    assert(table_desc != NULL);
+    assert((column_index >= 0) && (column_index < table_desc->columns_num));
+
+    return (*(int*)((char*)table_desc + table_desc->columns[column_index].offset
+		-sizeof(sorm_stat_t) - sizeof(int)));
+}
+
+static inline int _set_blob_len(
+	sorm_table_descriptor_t *table_desc, int column_index, int len)
+{
+    assert(table_desc != NULL);
+    assert((column_index >= 0) && (column_index < table_desc->columns_num));
+
+    (*(int*)((char*)table_desc + table_desc->columns[column_index].offset
+	     -sizeof(sorm_stat_t) - sizeof(int))) = len;
+}
 /**
  * @brief: call sqlite3_bind to bind a column value into a prepared statement
  *
@@ -145,7 +165,6 @@ static int _sqlite3_column_bind(
 
     const sorm_column_descriptor_t *column_desc = 
         &table_desc->columns[column_index];
-
     switch(column_desc->type)
     {
         case SORM_TYPE_INT :
@@ -167,13 +186,33 @@ static int _sqlite3_column_bind(
                             -1, SQLITE_STATIC);
                     break;
                 default :
-                    log_debug("unknow sorm mem : %d", column_desc->mem);
+                    log_error("unknow sorm mem : %d", column_desc->mem);
                     return SORM_INVALID_MEM;
             }
             break;
         case SORM_TYPE_DOUBLE :
             ret = sqlite3_bind_double(stmt_handle, bind_index,
                     *((double*)((char*)table_desc + column_desc->offset)));
+            break;
+        case SORM_TYPE_BLOB :
+            switch(column_desc->mem)
+            {
+                case SORM_MEM_HEAP :
+                    ret = sqlite3_bind_blob(stmt_handle, bind_index, 
+                            *((void**)((char*)table_desc + column_desc->offset)),  
+                            _get_blob_len(table_desc, column_index), 
+                            SQLITE_STATIC);
+                    break;
+                case SORM_MEM_STACK :
+                    ret = sqlite3_bind_blob(stmt_handle, bind_index, 
+                            (void*)((char*)table_desc + column_desc->offset),  
+                            _get_blob_len(table_desc, column_index), 
+                            SQLITE_STATIC);
+                    break;
+                default :
+                    log_error("unknow sorm mem : %d", column_desc->mem);
+                    return SORM_INVALID_MEM;
+            }
             break;
         default :
             log_error("unknow sorm type : %d", column_desc->type);
@@ -249,7 +288,9 @@ static inline int _sqlite3_column(
 {
     int ret, offset;
     char *text = NULL;
+    void *blob_db = NULL, *blob = NULL;
     const sorm_column_descriptor_t *column_desc = NULL;
+    int blob_len;
 
     assert(table_desc != NULL);
     assert(stmt_handle != NULL);
@@ -269,24 +310,23 @@ static inline int _sqlite3_column(
             {
                 text = mem_strdup((char *)sqlite3_column_text(stmt_handle, 
                             result_index));
-                if(text == NULL)
-                {
-                    log_error("mem_strdup for column value fail.");
-                    return SORM_NOMEM;
-                }
                 *(char **)((char*)table_desc + column_desc->offset) = text; 
             }else if(column_desc->mem == SORM_MEM_STACK)
             {
-                ret = snprintf((char*)table_desc + column_desc->offset, 
-                        column_desc->text_max_len + 1, "%s",
-                        (char *)sqlite3_column_text(stmt_handle, result_index));
-                offset = ret;
-                if(ret < 0 || offset > column_desc->text_max_len)
+                text = (char *)sqlite3_column_blob(stmt_handle, result_index);
+                if(text != NULL)
                 {
-                    log_error("get too long text from db, "
-                            "length(%d) > max length(%d)", offset, 
-                            column_desc->text_max_len);
-                    return SORM_TOO_LONG;
+                    ret = snprintf((char*)table_desc + column_desc->offset, 
+                            column_desc->max_len + 1, "%s",
+                            (char *)sqlite3_column_text(stmt_handle, result_index));
+                    offset = ret;
+                    if(ret < 0 || offset > column_desc->max_len)
+                    {
+                        log_error("get too long text from db, "
+                                "length(%d) > max length(%d)", offset, 
+                                column_desc->max_len);
+                        return SORM_TOO_LONG;
+                    }
                 }
             }else
             {
@@ -297,6 +337,45 @@ static inline int _sqlite3_column(
         case SORM_TYPE_DOUBLE :
             *((double*)((char*)table_desc + column_desc->offset)) = 
                 sqlite3_column_double(stmt_handle, result_index);
+            break;
+        case SORM_TYPE_BLOB :
+            if(column_desc->mem == SORM_MEM_HEAP)
+            {
+                blob_db = sqlite3_column_blob(stmt_handle, result_index);
+                blob_len = sqlite3_column_bytes(stmt_handle, result_index);
+                if(blob_len != 0)
+                {
+                    blob = mem_malloc(blob_len);
+                    if(blob == NULL)
+                    {
+                        log_error("malloc for blob fail");
+                        return SORM_NOMEM;
+                    }
+                    memcpy(blob, blob_db, blob_len);
+                }else
+                {
+                    blob = NULL;
+                }
+                *(char **)((char*)table_desc + column_desc->offset) = blob; 
+            }else if(column_desc->mem == SORM_MEM_STACK)
+            {
+                text = (char *)sqlite3_column_blob(stmt_handle, result_index);
+                blob_len = sqlite3_column_bytes(stmt_handle, result_index);
+
+                if(blob_len > column_desc->max_len)
+                {
+                        log_error("get too long blob from db, "
+                                "length(%d) > max length(%d)", blob_len, 
+                                column_desc->max_len);
+                        return SORM_TOO_LONG;
+                }
+                memcpy((char*)table_desc + column_desc->offset, text, blob_len); 
+            }else
+            {
+                log_error("unknow sorm mem : %d", column_desc->mem);
+                return SORM_INVALID_MEM;
+            }
+	        _set_blob_len(table_desc, column_index, blob_len);
             break;
         default :
             log_error("unknow sorm type : %d", column_desc->type);
@@ -949,6 +1028,7 @@ int sorm_open(
         log_debug("mem_malloc for _connection fail");
         return SORM_NOMEM;
     }
+
     memset(_connection, 0, sizeof(sorm_connection_t));
 
     _connection->db_file_path = mem_strdup(path);
@@ -1269,6 +1349,12 @@ sorm_new_array(
         return NULL;
     }
 
+    if(n == 0)
+    {
+        log_debug("sorm_new_array 0\n");
+        return NULL;
+    }
+
     table_desc = mem_malloc(init_table_desc->size * n);
     if(table_desc == NULL)
     {
@@ -1306,7 +1392,7 @@ void sorm_free(
 
 int sorm_set_column_value(
         sorm_table_descriptor_t *table_desc, 
-        int column_index, void *value)
+        int column_index, const void *value, int value_len)
 {
     const sorm_column_descriptor_t *column_desc = NULL;
     char *text = NULL;
@@ -1336,7 +1422,7 @@ int sorm_set_column_value(
         case SORM_TYPE_TEXT :
             if(column_desc->mem == SORM_MEM_HEAP)
             {
-                text = mem_strdup((char *)value);
+                text = (char *)value;
                 if(text == NULL)
                 {
                     log_error("mem_strdup for column value fail.");
@@ -1346,13 +1432,13 @@ int sorm_set_column_value(
             }else if(column_desc->mem == SORM_MEM_STACK)
             {
                 ret = snprintf((char*)table_desc + column_desc->offset, 
-                        column_desc->text_max_len + 1, "%s", (char *)value);
+                        column_desc->max_len + 1, "%s", (char *)value);
                 offset = ret;
-                if(ret < 0 || offset > column_desc->text_max_len)
+                if(ret < 0 || offset > column_desc->max_len)
                 {
                     log_error("set too long text, "
                             "length(%d) > max length(%d)", offset, 
-                            column_desc->text_max_len);
+                            column_desc->max_len);
                     return SORM_TOO_LONG;
                 }
             }else
@@ -1364,6 +1450,34 @@ int sorm_set_column_value(
         case SORM_TYPE_DOUBLE :
             *((double*)((char*)table_desc + column_desc->offset)) = 
                 *(double*)value;
+            break;
+        case SORM_TYPE_BLOB :
+            if(column_desc->mem == SORM_MEM_HEAP)
+            {
+                text = value;
+                //if(text == NULL)
+                //{
+                //    log_error("mem_strdup for column value fail.");
+                //    return SORM_NOMEM;
+                //}
+                *(char **)((char*)table_desc + column_desc->offset) = text; 
+                _set_blob_len(table_desc, column_index, value_len);
+            }else if(column_desc->mem == SORM_MEM_STACK)
+            {
+                if(value_len > column_desc->max_len)
+                {
+                    log_error("set too long blob, "
+                            "length(%d) > max length(%d)", offset, 
+                            column_desc->max_len);
+                    return SORM_TOO_LONG;
+                }
+                memcpy((char*)table_desc + column_desc->offset, value, value_len);
+                _set_blob_len(table_desc, column_index, value_len);
+            }else
+            {
+                log_error("unknow sorm mem : %d", column_desc->mem);
+                return SORM_INVALID_MEM;
+            }
             break;
         default :
             log_error("unknow sorm type : %d", column_desc->type);
@@ -1943,6 +2057,12 @@ int _select_some_array_core(
     int i;
 
     memset(rows_of_tables, 0, sizeof(void*) * tables_num);
+    if(max_rows_num == 0)
+    {
+        log_debug("max_row_num is 0");
+        *rows_num = 0;
+        return SORM_OK;
+    }
     for(i = 0; i < tables_num; i ++)
     {
         if((select_columns_of_tables[i].columns_num != 0) && 

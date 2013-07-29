@@ -15,15 +15,23 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #include "sorm.h"
 #include "volume_sorm.h"
 #include "device_sorm.h"
 #include "log.h"
+#include "text_blob_sorm.h"
 
 #define DB_FILE "sorm.db"
 #define FILTER_MAX_LEN	127
 #define sem_key 1024
+
+typedef struct blob_s
+{
+    int i;
+    double d;
+}blob_t;
 
 static sorm_connection_t *conn;
 static device_t *device;
@@ -46,9 +54,23 @@ static int suite_sorm_init(void)
     }
 
     ret = device_create_table(conn);
+    if(ret != SORM_OK)
+    {
+        return -1;
+    }
 
 
     ret = volume_create_table(conn);
+    if(ret != SORM_OK)
+    {
+        return -1;
+    }
+
+    ret = text_blob_create_table(conn);
+    if(ret != SORM_OK)
+    {
+        return -1;
+    }
 
     return 0;
 }
@@ -68,7 +90,12 @@ static int suite_sorm_final(void)
     {
         return -1;
     }
-
+    
+    ret = text_blob_delete_table(conn);
+    if(ret != SORM_OK)
+    {
+        return -1;
+    }
 
     ret = sorm_close(conn);
 
@@ -1875,13 +1902,13 @@ static void test_index(void)
 {
     int ret;
     ret = device_create_index(conn, "uuid");
-    assert(ret == SORM_OK);
+    CU_ASSERT(ret == SORM_OK);
     ret = device_drop_index(conn, "uuid");
-    assert(ret == SORM_OK);
+    CU_ASSERT(ret == SORM_OK);
     ret = device_drop_index(conn, "uuid");
-    assert(ret != SORM_OK);
+    CU_ASSERT(ret != SORM_OK);
     ret = device_drop_index(conn, "cid");
-    assert(ret != SORM_OK);
+    CU_ASSERT(ret != SORM_OK);
 }
 
 static void test_create_drop_conflict(void)
@@ -1896,6 +1923,127 @@ static void test_create_drop_conflict(void)
     CU_ASSERT(ret == SORM_OK);
 }
 
+static void test_text(void)
+{
+    text_blob_t *text_blob, *select_text_blob;
+    int ret;
+
+    text_blob = text_blob_new();
+    CU_ASSERT(text_blob != NULL);
+
+    ret = text_blob_set_id(text_blob, 1);
+    ret = text_blob_set_text_heap(text_blob, "text_heap");
+    CU_ASSERT(ret == SORM_OK);
+    ret = text_blob_set_text_stack(text_blob, "text_stack");
+    CU_ASSERT(ret == SORM_OK);
+
+    ret = text_blob_save(conn, text_blob);
+    CU_ASSERT(ret == SORM_OK);
+
+    ret = text_blob_select_by_id(conn, ALL_COLUMNS, 1, &select_text_blob);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(strcmp(text_blob->text_heap, select_text_blob->text_heap) == 0);
+    CU_ASSERT(strcmp(text_blob->text_stack, select_text_blob->text_stack) == 0);
+
+    ret = text_blob_delete_by_id(conn, 1);
+    CU_ASSERT(ret == SORM_OK);
+
+    text_blob_free(text_blob);
+    
+    /* with NULL */
+    text_blob = text_blob_new();
+    CU_ASSERT(text_blob != NULL);
+
+    ret = text_blob_set_id(text_blob, 1);
+
+    ret = text_blob_save(conn, text_blob);
+    CU_ASSERT(ret == SORM_OK);
+
+    ret = text_blob_select_by_id(conn, ALL_COLUMNS, 1, &select_text_blob);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(text_blob->text_heap == NULL);
+    CU_ASSERT(select_text_blob->text_heap == NULL);
+    CU_ASSERT(strlen(text_blob->text_stack) == 0);
+    CU_ASSERT(strlen(select_text_blob->text_stack) == 0);
+
+    ret = text_blob_delete_by_id(conn, 1);
+    CU_ASSERT(ret == SORM_OK);
+
+    text_blob_free(text_blob);
+}
+
+static void test_blob(void)
+{
+    text_blob_t *text_blob, *select_text_blob;
+    int ret;
+    blob_t blob, *blob_p;
+    blob.i = 38, blob.d = 343.3242;
+
+    text_blob = text_blob_new();
+    CU_ASSERT(text_blob != NULL);
+
+    ret = text_blob_set_id(text_blob, 1);
+    ret = text_blob_set_blob_heap(text_blob, &blob, sizeof(blob_t));
+    CU_ASSERT(ret == SORM_OK);
+    blob_p = text_blob->blob_heap;
+    CU_ASSERT(blob.i == blob_p->i);
+    CU_ASSERT(blob.d == blob_p->d);
+    ret = text_blob_set_blob_stack(text_blob, &blob, sizeof(blob_t));
+    CU_ASSERT(ret == SORM_OK);
+    blob_p = text_blob->blob_stack;
+    CU_ASSERT(blob.i == blob_p->i);
+    CU_ASSERT(blob.d == blob_p->d);
+
+    ret = text_blob_save(conn, text_blob);
+    CU_ASSERT(ret == SORM_OK);
+
+    ret = text_blob_select_by_id(conn, ALL_COLUMNS, 1, &select_text_blob);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(sizeof(blob_t) == select_text_blob->blob_stack_len);
+    blob_p = select_text_blob->blob_stack;
+    CU_ASSERT(blob.i == blob_p->i);
+    CU_ASSERT(blob.d == blob_p->d);
+    CU_ASSERT(sizeof(blob_t) == select_text_blob->blob_heap_len);
+    blob_p = select_text_blob->blob_heap;
+    assert(blob_p != NULL);
+    CU_ASSERT(blob.i == blob_p->i);
+    CU_ASSERT(blob.d == blob_p->d);
+
+    ret = text_blob_delete_by_id(conn, 1);
+    CU_ASSERT(ret == SORM_OK);
+
+    text_blob_free(text_blob);
+    
+    /* with NULL */
+    text_blob = text_blob_new();
+    CU_ASSERT(text_blob != NULL);
+
+    ret = text_blob_set_id(text_blob, 1);
+
+    ret = text_blob_save(conn, text_blob);
+    CU_ASSERT(ret == SORM_OK);
+
+    ret = text_blob_select_by_id(conn, ALL_COLUMNS, 1, &select_text_blob);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(0 == text_blob->blob_heap_len);
+    CU_ASSERT(0 == select_text_blob->blob_heap_len);
+    CU_ASSERT(text_blob->blob_heap == NULL);
+    CU_ASSERT(select_text_blob->blob_heap == NULL);
+    CU_ASSERT(0 == text_blob->blob_heap_len);
+    CU_ASSERT(0 == select_text_blob->blob_heap_len);
+    CU_ASSERT(strlen(text_blob->blob_stack) == 0);
+    CU_ASSERT(strlen(select_text_blob->blob_stack) == 0);
+
+    ret = text_blob_delete_by_id(conn, 1);
+    CU_ASSERT(ret == SORM_OK);
+
+    text_blob_free(text_blob);
+}
+
+static void test_save(void)
+{
+
+}
 
 static CU_TestInfo tests_device[] = {
     {"01.test_device_new", test_device_new},
@@ -1923,6 +2071,8 @@ static CU_TestInfo tests_sorm[] = {
     {"05.test_sorm_strerror", test_sorm_strerror},
     {"06.test_sorm_unique", test_sorm_unique},
     {"07.test_sorm_foreign_key", test_sorm_foreign_key},
+    {"08.test_text", test_text},
+    {"09.test_blob", test_blob}, 
     CU_TEST_INFO_NULL,
 };
 

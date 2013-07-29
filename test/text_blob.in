@@ -1,0 +1,1 @@
+CREATE TABLE text_blob{id INTEGER PRIMARY KEY, text_heap TEXT, text_stack TEXT(31), blob_heap BLOB, blob_stack BLOB(31)}
