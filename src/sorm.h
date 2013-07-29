@@ -159,11 +159,13 @@ typedef enum
 } sorm_constraint_t;
 
 /** @brief:  status for the member in an SORM　object*/
-typedef enum
-{
-    SORM_STAT_NULL		=   0,	/* the member does not have value */
-    SORM_STAT_VALUED,			/* the member has a value */
-} sorm_stat_t;
+#define SORM_STAT_VALUED    0x1 /* the member has a value */
+#define SORM_STAT_NEEDFREE  0x2 /* the member need to be freed */
+#define sorm_is_stat(stat, check_stat) \
+    (((stat) & (check_stat)) == (check_stat))
+#define sorm_is_stat_valued(stat) sorm_is_stat(stat, SORM_STAT_VALUED)
+#define sorm_is_stat_needfree(stat) sorm_is_stat(stat, SORM_STAT_NEEDFREE)
+typedef int sorm_stat_t;
 
 /** @brief: database type */
 typedef enum

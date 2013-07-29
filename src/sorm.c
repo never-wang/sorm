@@ -23,6 +23,13 @@
 
 #define _list_cpy_free(desc, head, n, rows, free) \
     __list_cpy_free(desc, head, n, rows, (void*)(free))
+#define _heap_member_pointer(table_desc, member_offset) \
+     *(char **)((char*)(table_desc) + (member_offset))
+#define _stack_member_pointer(table_desc, member_offset) \
+    ((char*)(table_desc) + (member_offset))
+#define _type_member_pointer(table_desc, offset, type) \
+    ((type*)((char*)(table_desc) + (offset)))
+    
 
 /** @brief: type to string which is used in sql statement */
 static const char* sorm_type_db_str[] = 
@@ -119,6 +126,19 @@ static inline void _set_column_stat(
                       - sizeof(sorm_stat_t))) = stat;
 }
 
+static inline void _add_column_stat(
+        sorm_table_descriptor_t *table_desc, int column_index, 
+        sorm_stat_t new_stat)
+{
+    assert(table_desc != NULL);
+    assert((column_index >= 0) && (column_index < table_desc->columns_num));
+    
+    sorm_stat_t stat;
+    stat = _get_column_stat(table_desc, column_index);
+    stat |= new_stat;
+    _set_column_stat(table_desc, column_index, new_stat);
+}
+
 static inline int _get_blob_len(
 	const sorm_table_descriptor_t *table_desc, int column_index)
 {
@@ -161,10 +181,11 @@ static int _sqlite3_column_bind(
     assert(stmt_handle != NULL);
     assert(table_desc != NULL);
     assert((column_index >= 0) && (column_index < table_desc->columns_num));
-    assert(_get_column_stat(table_desc, column_index) != SORM_STAT_NULL);
+    assert(sorm_is_stat_valued(_get_column_stat(table_desc, column_index)));
 
     const sorm_column_descriptor_t *column_desc = 
         &table_desc->columns[column_index];
+
     switch(column_desc->type)
     {
         case SORM_TYPE_INT :
@@ -301,7 +322,7 @@ static inline int _sqlite3_column(
     switch(column_desc->type)
     {
         case SORM_TYPE_INT :
-            *((int32_t*)((char*)table_desc + column_desc->offset)) = 
+            *_type_member_pointer(table_desc, column_desc->offset, int32_t) =
                 sqlite3_column_int(stmt_handle, result_index);
             break;
             //TODO TEXT16
@@ -310,8 +331,9 @@ static inline int _sqlite3_column(
             {
                 text = mem_strdup((char *)sqlite3_column_text(
                             stmt_handle, result_index));
-                *(char **)((char*)table_desc + column_desc->offset) = 
-                    text; 
+                _heap_member_pointer(table_desc, column_desc->offset) = text; 
+                _add_column_stat(table_desc, column_index, 
+                        SORM_STAT_NEEDFREE);
             }else if(column_desc->mem == SORM_MEM_STACK)
             {
                 text = (char *)sqlite3_column_blob(
@@ -320,13 +342,13 @@ static inline int _sqlite3_column(
                 {
                     text = (char *)sqlite3_column_text(
                             stmt_handle, result_index);
-                    ret = snprintf((char*)table_desc + 
-                            column_desc->offset, 
-                            column_desc->max_len + 1, "%s", text);
-                    offset = ret;
-                    if(ret < 0 || offset > column_desc->max_len)
-                    {
-                        log_error("get too long text from db, "
+                    ret = snprintf(_stack_member_pointer(table_desc, 
+                                column_desc->offset), 
+                                column_desc->max_len + 1, "%s", text);
+                            offset = ret;
+                            if(ret < 0 || offset > column_desc->max_len)
+                            {
+                            log_error("get too long text from db, "
                                 "length(%d) > max length(%d)", offset, 
                                 column_desc->max_len);
                         return SORM_TOO_LONG;
@@ -339,7 +361,7 @@ static inline int _sqlite3_column(
             }
             break;
         case SORM_TYPE_DOUBLE :
-            *((double*)((char*)table_desc + column_desc->offset)) = 
+            *_type_member_pointer(table_desc, column_desc->offset, double) = 
                 sqlite3_column_double(stmt_handle, result_index);
             break;
         case SORM_TYPE_BLOB :
@@ -356,11 +378,13 @@ static inline int _sqlite3_column(
                         return SORM_NOMEM;
                     }
                     memcpy(blob, blob_db, blob_len);
+                _add_column_stat(table_desc, column_index, 
+                        SORM_STAT_NEEDFREE);
                 }else
                 {
                     blob = NULL;
                 }
-                *(char **)((char*)table_desc + column_desc->offset) = blob; 
+                _heap_member_pointer(table_desc, column_desc->offset) = blob;
             }else if(column_desc->mem == SORM_MEM_STACK)
             {
                 text = (char *)sqlite3_column_blob(stmt_handle, result_index);
@@ -373,7 +397,8 @@ static inline int _sqlite3_column(
                                 column_desc->max_len);
                         return SORM_TOO_LONG;
                 }
-                memcpy((char*)table_desc + column_desc->offset, text, blob_len); 
+                memcpy(_stack_member_pointer(table_desc, 
+                            column_desc->offset), text, blob_len); 
             }else
             {
                 log_error("unknow sorm mem : %d", column_desc->mem);
@@ -386,7 +411,7 @@ static inline int _sqlite3_column(
             return SORM_INVALID_TYPE;
     }
 
-    _set_column_stat(table_desc, column_index, SORM_STAT_VALUED);
+    _add_column_stat(table_desc, column_index, SORM_STAT_VALUED);
     //log_debug("Success return");
     return SORM_OK;
 }
@@ -1388,8 +1413,18 @@ void sorm_free(
     if(table_desc != NULL)
     {
         mem_free(table_desc);
+        for(i = 0; i < table_desc->columns_num; i ++)
+        {
+            if(sorm_is_stat_needfree(_get_column_stat(table_desc, i)))
+            {
+                assert((table_desc->columns[i].type == SORM_TYPE_TEXT || 
+                            table_desc->columns[i].type == SORM_TYPE_BLOB));
+                assert(table_desc->columns[i].mem == SORM_MEM_HEAP);
+                mem_free(_heap_member_pointer(table_desc,
+                            table_desc->columns[i].offset));
+            }
+        }
     }
-
     //log_debug("Success return");
 
 }
@@ -1427,11 +1462,6 @@ int sorm_set_column_value(
             if(column_desc->mem == SORM_MEM_HEAP)
             {
                 text = (char *)value;
-                if(text == NULL)
-                {
-                    log_error("mem_strdup for column value fail.");
-                    return SORM_NOMEM;
-                }
                 *(char **)((char*)table_desc + column_desc->offset) = text; 
             }else if(column_desc->mem == SORM_MEM_STACK)
             {
@@ -1459,11 +1489,6 @@ int sorm_set_column_value(
             if(column_desc->mem == SORM_MEM_HEAP)
             {
                 text = value;
-                //if(text == NULL)
-                //{
-                //    log_error("mem_strdup for column value fail.");
-                //    return SORM_NOMEM;
-                //}
                 *(char **)((char*)table_desc + column_desc->offset) = text; 
                 _set_blob_len(table_desc, column_index, value_len);
             }else if(column_desc->mem == SORM_MEM_STACK)
@@ -1488,7 +1513,7 @@ int sorm_set_column_value(
             return SORM_INVALID_TYPE;
     }
 
-    _set_column_stat(table_desc, column_index, SORM_STAT_VALUED);
+    _add_column_stat(table_desc, column_index, SORM_STAT_VALUED);
 
     return SORM_OK;
 }
@@ -1533,7 +1558,7 @@ int sorm_save(
     
     for(i = 0; i < table_desc->columns_num; i ++)
     {
-        if(_get_column_stat(table_desc, i) == SORM_STAT_VALUED)
+        if(sorm_is_stat_valued(_get_column_stat(table_desc, i)))
         {
             ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1, 
                     " %s,", table_desc->columns[i].name);
@@ -1561,7 +1586,7 @@ int sorm_save(
 
     for(i = 0; i < table_desc->columns_num; i ++)
     {
-        if(_get_column_stat(table_desc, i) == SORM_STAT_VALUED)
+        if(sorm_is_stat_valued(_get_column_stat(table_desc, i)))
         {
             ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1, 
                     " ?,");
@@ -1591,7 +1616,7 @@ int sorm_save(
     bind_index = 1;
     for(i = 0; i < table_desc->columns_num; i ++)
     {
-        if(_get_column_stat(table_desc, i) == SORM_STAT_VALUED)
+        if(sorm_is_stat_valued(_get_column_stat(table_desc, i)))
         {
             ret = _sqlite3_column_bind(
                     conn, stmt_handle, table_desc, i, bind_index);
@@ -1661,7 +1686,7 @@ int sorm_delete(
 
     for(i = 0; i < table_desc->columns_num; i ++)
     {
-        if(_get_column_stat(table_desc, i) != SORM_STAT_NULL)
+        if(sorm_is_stat_valued(_get_column_stat(table_desc, i)))
         {
             ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1, 
                     " %s=? AND", column_desc[i].name);
@@ -1691,7 +1716,7 @@ int sorm_delete(
     bind_index = 1;
     for(i = 0; i < table_desc->columns_num; i ++)
     {
-        if(_get_column_stat(table_desc, i) != SORM_STAT_NULL)
+        if(sorm_is_stat_valued(_get_column_stat(table_desc, i)))
         {
             ret = _sqlite3_column_bind(
                     conn, stmt_handle, table_desc, i, bind_index);
@@ -1727,16 +1752,16 @@ DB_FINALIZE :
 
     }
     
-    if(ret_val == SORM_OK)
-    {
-        for(i = 0; i < table_desc->columns_num; i ++)
-        {
-            if(_get_column_stat(table_desc, i) != SORM_STAT_NULL)
-            {
-                _set_column_stat(table_desc, i, SORM_STAT_VALUED);
-            }
-        }
-    }
+    //if(ret_val == SORM_OK)
+    //{
+    //    for(i = 0; i < table_desc->columns_num; i ++)
+    //    {
+    //        if(_get_column_stat(table_desc, i) != SORM_STAT_NULL)
+    //        {
+    //            _set_column_stat(table_desc, i, SORM_STAT_VALUED);
+    //        }
+    //    }
+    //}
 
     return ret_val;
 }
