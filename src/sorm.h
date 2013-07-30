@@ -67,7 +67,7 @@ typedef struct sorm_list_s
 #define sorm_list_for_each_safe(pos, scratch, head) \
     for(pos = (head)->next, scratch = pos->next; pos != (head); \
 	    pos = scratch, scratch = pos->next)
-#define sorm_list_free(head, free) _list_free(head, (void*)(free))
+#define sorm_list_free(head) _list_free(head, (void*)(sorm_free))
 
 /**
  * @brief: free a list, the list Param can be NULL

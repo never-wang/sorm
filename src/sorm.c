@@ -1430,13 +1430,15 @@ void sorm_free_array(
                     table_desc->size * (i));
             for(j = 0; j < table_desc_pos->columns_num; j ++)
             {
-                if(sorm_is_stat_needfree(_get_column_stat(table_desc, j)))
+                if(sorm_is_stat_needfree(_get_column_stat(table_desc_pos, j)))
                 {
-                    assert((table_desc->columns[j].type == SORM_TYPE_TEXT || 
-                                table_desc->columns[j].type == SORM_TYPE_BLOB));
-                    assert(table_desc->columns[j].mem == SORM_MEM_HEAP);
-                    mem_free(_heap_member_pointer(table_desc,
-                                table_desc->columns[j].offset));
+                    //printf("fuck free heap : (%s, %s)\n", table_desc
+                    assert((table_desc_pos->columns[j].type == SORM_TYPE_TEXT || 
+                                table_desc_pos->columns[j].type == 
+                                SORM_TYPE_BLOB));
+                    assert(table_desc_pos->columns[j].mem == SORM_MEM_HEAP);
+                    mem_free(_heap_member_pointer(table_desc_pos,
+                                table_desc_pos->columns[j].offset));
                 }
             }
         }
@@ -2299,7 +2301,7 @@ RETURN :
     {
         for(i = 0; i < tables_num; i ++)
         {
-            sorm_list_free(rows_of_tables[i], mem_free);
+            sorm_list_free(rows_of_tables[i]);
             rows_of_tables[i] = NULL;
         }
     }
@@ -2407,7 +2409,7 @@ RETURN :
     {
         for(i = 0; i < tables_num; i ++)
         {
-            sorm_list_free(rows_of_tables[i], mem_free);
+            sorm_list_free(rows_of_tables[i]);
             rows_of_tables[i] = NULL;
         }
     }
@@ -2500,7 +2502,7 @@ int sorm_select_all_array_by(
         if(_get_row == NULL)
         {
             log_debug("New sorm array error");
-            sorm_list_free(row_head, mem_free);
+            sorm_list_free(row_head);
             return SORM_NOMEM;
         }
         _list_cpy_free(table_desc, row_head, *n, _get_row, mem_free);
