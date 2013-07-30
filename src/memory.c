@@ -30,12 +30,12 @@ static inline void* system_alloc(void *memory_pool, size_t size)
     }
 
     buf = malloc(size);
+    if(buf == NULL)
+    {
+        error("Not enough memory.");
+        exit(-1);
+    }
     return buf;
-    //if(buf == NULL)
-    //{
-    //    error("Not enough memory.");
-    //    exit(-1);
-    //}
 }
 
 /**

@@ -390,6 +390,8 @@ sorm_new_array(
  */
 void sorm_free(
         sorm_table_descriptor_t *table_desc);
+void sorm_free_array(
+        sorm_table_descriptor_t *table_desc, int n);
 /**
  * @brief: set a column's value for a sorm object
  *

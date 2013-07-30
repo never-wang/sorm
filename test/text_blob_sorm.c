@@ -87,6 +87,11 @@ void text_blob_free(text_blob_t *text_blob)
     sorm_free((sorm_table_descriptor_t *)text_blob);
 }
 
+void text_blob_free_array(text_blob_t *text_blob, int n)
+{
+    sorm_free_array((sorm_table_descriptor_t *)text_blob, n);
+}
+
 int text_blob_create_table(const sorm_connection_t *conn)
 {
     return sorm_create_table(conn, &text_blob_table_descriptor);

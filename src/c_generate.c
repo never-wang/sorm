@@ -113,6 +113,12 @@ static void c_generate_func_free(
     fprintf(file, INDENT "sorm_free((sorm_table_descriptor_t *)%s);\n",
             table_desc->name);
     fprintf(file, "}\n\n");
+    
+    fprintf(file, "void %s_free_array(%s_t *%s, int n)\n{\n", 
+            table_desc->name, table_desc->name, table_desc->name);
+    fprintf(file, INDENT "sorm_free_array((sorm_table_descriptor_t *)%s, n);\n",
+            table_desc->name);
+    fprintf(file, "}\n\n");
 }
 
 static void c_generate_func_create_table(

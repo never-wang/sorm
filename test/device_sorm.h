@@ -34,6 +34,8 @@ device_t* device_new();
 
 void device_free(device_t *device);
 
+void device_free_array(device_t *device, int n);
+
 int device_create_table(const sorm_connection_t *conn);
 
 int device_delete_table(const sorm_connection_t *conn);

@@ -75,6 +75,11 @@ void device_free(device_t *device)
     sorm_free((sorm_table_descriptor_t *)device);
 }
 
+void device_free_array(device_t *device, int n)
+{
+    sorm_free_array((sorm_table_descriptor_t *)device, n);
+}
+
 int device_create_table(const sorm_connection_t *conn)
 {
     return sorm_create_table(conn, &device_table_descriptor);

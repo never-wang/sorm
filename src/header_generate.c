@@ -127,6 +127,9 @@ static void header_generate_func_free(
 {
     fprintf(file, "void %s_free(%s_t *%s);\n\n", 
             table_desc->name, table_desc->name, table_desc->name);
+    
+    fprintf(file, "void %s_free_array(%s_t *%s, int n);\n\n", 
+            table_desc->name, table_desc->name, table_desc->name);
 }
 
 static void header_generate_func_create_table(

@@ -88,6 +88,11 @@ void volume_free(volume_t *volume)
     sorm_free((sorm_table_descriptor_t *)volume);
 }
 
+void volume_free_array(volume_t *volume, int n)
+{
+    sorm_free_array((sorm_table_descriptor_t *)volume, n);
+}
+
 int volume_create_table(const sorm_connection_t *conn)
 {
     return sorm_create_table(conn, &volume_table_descriptor);

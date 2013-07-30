@@ -38,6 +38,8 @@ volume_t* volume_new();
 
 void volume_free(volume_t *volume);
 
+void volume_free_array(volume_t *volume, int n);
+
 int volume_create_table(const sorm_connection_t *conn);
 
 int volume_delete_table(const sorm_connection_t *conn);

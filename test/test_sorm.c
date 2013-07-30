@@ -219,7 +219,7 @@ static void test_device_update(void)
 
 static int _insert_long_row_into_device(int id, char *name)
 {
-    char sql_stmt[SQL_STMT_MAX_LEN + 1];
+    char sql_stmt[SQL_STMT_MAX_LEN + 1] = "";
     sqlite3_stmt *stmt_handle;
     int ret, ret_val;
 
@@ -345,6 +345,7 @@ static void test_device_select(void)
     ret = device_select_some_array_by(conn, ALL_COLUMNS, NULL, &n, &select_device);
     CU_ASSERT(ret == SORM_NOEXIST);
     CU_ASSERT(n == 0);
+    device_free(select_device);
 
     //printf("Start select half by select_some_array_by with filter\n");
     n = amount * 2;
@@ -454,6 +455,7 @@ static void test_device_select(void)
         CU_ASSERT(strcmp(device->password, select_device->password) == 0);
         i ++;
     }
+    sorm_list_free(select_device_list, free);
 
     /*****************************/
     /* test select_all_array_by */
@@ -518,7 +520,7 @@ static void test_device_select(void)
         i++;
     }
     assert(device != NULL);
-    device_free(select_device);
+    sorm_list_free(select_device_list, free);
 
     //printf("Start select all by select_all_list_by without filter\n");
     n = 0;
@@ -539,7 +541,7 @@ static void test_device_select(void)
         i++;
     }
     assert(device != NULL);
-    device_free(select_device);
+    sorm_list_free(select_device_list, free);
 
     /* delete insert values */
     for(i = 0; i < amount; i ++)
@@ -598,6 +600,7 @@ static void test_device_noexist(void)
     int ret;
 
     ret = device_select_by_id(conn, ALL_COLUMNS, 137, &get_device);
+    device_free(get_device);
     CU_ASSERT(ret == SORM_NOEXIST);
 }
 
@@ -671,6 +674,7 @@ static void test_transaction(void)
         sprintf(buf, "name-%d", i);
         CU_ASSERT(strcmp(select_device[i].name, buf) == 0);
     }
+    device_free(select_device);
 
     device = device_new();
 
@@ -795,6 +799,8 @@ static void test_transaction(void)
     ret = device_select_by_id(conn, ALL_COLUMNS, 2, &get_device);
     CU_ASSERT(ret == SORM_NOEXIST);
     device_free(get_device);
+
+    device_free(device);
 }
 
 static void test_select_columns()
@@ -886,6 +892,7 @@ static void test_select_columns()
 
 
     //printf("select invalid column \n");
+    /* TODO select not ok */
     ret = device_select_some_array_by(conn, "invalid", NULL, &n, &select_device);
     CU_ASSERT(ret == SORM_DB_ERROR);
     CU_ASSERT(select_device == NULL);
@@ -932,6 +939,8 @@ static void test_delete_by_id(void)
 
     ret = device_select_by_id(conn, ALL_COLUMNS, 1, &select_device);
     CU_ASSERT(ret == SORM_NOEXIST);
+
+    device_free(select_device);
 }
 
 static void test_select_by_column(void)
@@ -1030,9 +1039,10 @@ static void test_sorm_select_by_join()
     int volume_index[6]={0, 3, 1, 4, 2, 0};
 
     /* insert rows for select */
-    device = device_new();
     for(i = 0; i < 4; i ++)
     {
+        device = device_new();
+        
         device->id = i;
         device->id_stat = SORM_STAT_VALUED;
         sprintf(device->uuid,"uuid-%d", i);
@@ -1041,12 +1051,16 @@ static void test_sorm_select_by_join()
         device->name_stat = SORM_STAT_VALUED;
         sprintf(device->password, "passwd-%d", i);
         device->password_stat = SORM_STAT_VALUED;
+        
         device_save(conn, device);
+        
+        device_free(device);
     }
 
-    volume = volume_new();
     for(i = 0; i < 5; i ++)
     {
+        volume = volume_new();
+        
         volume->id = i;
         volume->id_stat = SORM_STAT_VALUED;
         volume->device_id = i % 3;
@@ -1057,8 +1071,11 @@ static void test_sorm_select_by_join()
         volume->drive_stat = SORM_STAT_VALUED;
         sprintf(volume->label, "label-%d", i);
         volume->label_stat = SORM_STAT_VALUED;
+        
         volume_save(conn, volume);
+        volume_free(volume);
     }
+    volume = volume_new();
     i = 6;
     volume->id = i;
     volume->id_stat = SORM_STAT_VALUED;
@@ -1071,8 +1088,11 @@ static void test_sorm_select_by_join()
     sprintf(volume->label, "label-%d", i);
     volume->label_stat = SORM_STAT_VALUED;
     volume_save(conn, volume);
+    volume_free(volume);
 
-    //printf("test inner join\n");
+    device = device_new();
+    volume = volume_new();
+    printf("test inner join\n");
     ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, "id",
             VOLUME_DESC, "device_id", SORM_INNER_JOIN, NULL, &n,
             &select_device, &select_volume);
@@ -1219,13 +1239,19 @@ static void test_sorm_select_by_join()
     }
     device_free(select_device);
     volume_free(select_volume);
+    
+    device_free(device);
+    volume_free(volume);
 
     n = 0;
     ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, "id",
             VOLUME_DESC, "device_id", SORM_INNER_JOIN, NULL, &n,
             &select_device, &select_volume);
+    printf("fuck : %s\n", sorm_strerror(ret));
     CU_ASSERT(ret == SORM_NOEXIST);
     CU_ASSERT(n == 0);
+    device_free(select_device);
+    volume_free(select_volume);
 
     for(i = 0; i < 3; i ++)
     {
@@ -1235,8 +1261,6 @@ static void test_sorm_select_by_join()
     {
         volume_delete_by_id(conn, i);
     }
-    device_free(device);
-    volume_free(volume);
 
     /* select from empty table */
     n = 4;
@@ -1245,12 +1269,26 @@ static void test_sorm_select_by_join()
             &select_device, &select_volume);
     CU_ASSERT(ret == SORM_NOEXIST);
     CU_ASSERT(n == 0);
+    device_free(select_device);
+    volume_free(select_volume);
 
     ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, "id",
             VOLUME_DESC, "device_id", SORM_INNER_JOIN, NULL, &n,
             &select_device, &select_volume);
     CU_ASSERT(ret == SORM_NOEXIST);
     CU_ASSERT(n == 0);
+    device_free(select_device);
+    volume_free(select_volume);
+    
+    sorm_list_t *list1, *list2;
+    ret = sorm_select_all_list_by_join(conn, ALL_COLUMNS, DEVICE_DESC, "id",
+            VOLUME_DESC, "device_id", SORM_INNER_JOIN, NULL, &n,
+            &list1, &list2);
+    CU_ASSERT(ret == SORM_NOEXIST);
+    CU_ASSERT(n == 0);
+    printf("fuck here\n");
+    sorm_list_free(list1, free);
+    sorm_list_free(list2, free);
 }
 
 static void test_sorm_select_columns_by_join()
@@ -1389,6 +1427,8 @@ static void test_sorm_select_columns_by_join()
             &select_device, &select_volume);
 
     CU_ASSERT(ret == SORM_DB_ERROR);
+    device_free(select_device);
+    device_free(select_volume);
 
     //printf("select drive\n");
     ret = sorm_select_all_array_by_join(conn, 
@@ -1525,6 +1565,8 @@ static void test_sorm_select_columns_by_join()
         sprintf(volume->label, "label-%d", i);
         CU_ASSERT(strcmp(volume->label, select_volume[i].label) == 0);
     }
+    device_free(select_device);
+    volume_free(select_volume);
 
     for(i = 0; i < 4; i ++)
     {
@@ -1534,8 +1576,9 @@ static void test_sorm_select_columns_by_join()
     {
         volume_delete_by_id(conn, i);
     }
-    device_free(select_device);
-    volume_free(select_volume);
+
+    device_free(device);
+    volume_free(volume);
 }
 static void test_volume_select_by_driver(void)
 {
@@ -1631,7 +1674,6 @@ static void test_volume_select_by_driver(void)
             "device.id = 0", &n, &select_volume);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 2);
-    volume_free(select_volume);
     for(i = 0; i < n; i ++)
     {
         CU_ASSERT(select_volume[i].id == volume_index[i]);
@@ -1643,6 +1685,7 @@ static void test_volume_select_by_driver(void)
         sprintf(volume->label, "label-%d", volume_index[i]);
         CU_ASSERT(strcmp(volume->label, select_volume[i].label) == 0);
     }
+    volume_free(select_volume);
 
     for(i = 0; i < 3; i ++)
     {
@@ -1660,15 +1703,19 @@ static void test_volume_select_by_driver(void)
     ret = volume_select_some_array_by(conn, "invalid", NULL, &n, &select_volume);
     CU_ASSERT(ret == SORM_DB_ERROR);
     CU_ASSERT(select_volume == NULL);
+    volume_free(select_volume);
     ret = volume_select_all_array_by(conn, "invalid", NULL, &n, &select_volume);
     CU_ASSERT(ret == SORM_DB_ERROR);
     CU_ASSERT(select_volume == NULL);
+    volume_free(select_volume);
     ret = volume_select_some_list_by(conn, "invalid", NULL, &n, &list);
     CU_ASSERT(ret == SORM_DB_ERROR);
     CU_ASSERT(list == NULL);
+    volume_free(select_volume);
     ret = volume_select_all_list_by(conn, "invalid", NULL, &n, &list);
     CU_ASSERT(ret == SORM_DB_ERROR);
     CU_ASSERT(list == NULL);
+    volume_free(select_volume);
 }
 
 static void test_sorm_select_null_by_join(void)
@@ -1853,6 +1900,7 @@ static void test_sorm_unique(void)
 
     ret = device_select_by_id(conn, ALL_COLUMNS, 1, &select_device);
     CU_ASSERT(ret == SORM_NOEXIST);
+    device_free(select_device);
     ret = device_select_by_id(conn, ALL_COLUMNS, 2, &select_device);
     CU_ASSERT(ret == SORM_OK);
     device_free(select_device);
@@ -1877,6 +1925,7 @@ static void test_sorm_unique(void)
 
     ret = device_select_by_id(conn, ALL_COLUMNS, 1, &select_device);
     CU_ASSERT(ret == SORM_OK);
+    device_free(select_device);
     ret = device_select_by_id(conn, ALL_COLUMNS, 2, &select_device);
     CU_ASSERT(ret == SORM_OK);
     device_free(select_device);
@@ -1892,9 +1941,10 @@ static void test_sorm_foreign_key(void)
     device_t *device;
     volume_t *volume;
     int ret, i;
-    device = device_new();
     for(i = 0; i < 2; i ++)
     {
+        device = device_new();
+        
         device->id = i;
         device->id_stat = SORM_STAT_VALUED;
         sprintf(device->uuid,"uuid-%d", i);
@@ -1903,8 +1953,13 @@ static void test_sorm_foreign_key(void)
         device->name_stat = SORM_STAT_VALUED;
         sprintf(device->password, "passwd-%d", i);
         device->password_stat = SORM_STAT_VALUED;
+        
         device_save(conn, device);
+        
+        device_free(device);
     }
+    
+
     volume = volume_new();
     volume_set_device_id(volume, 4);
     volume_set_uuid(volume, "aaaa");
@@ -1972,6 +2027,7 @@ static void test_text(void)
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(strcmp(text_blob->text_heap, select_text_blob->text_heap) == 0);
     CU_ASSERT(strcmp(text_blob->text_stack, select_text_blob->text_stack) == 0);
+    text_blob_free(select_text_blob);
 
     ret = text_blob_delete_by_id(conn, 1);
     CU_ASSERT(ret == SORM_OK);
@@ -1993,6 +2049,7 @@ static void test_text(void)
     CU_ASSERT(select_text_blob->text_heap == NULL);
     CU_ASSERT(strlen(text_blob->text_stack) == 0);
     CU_ASSERT(strlen(select_text_blob->text_stack) == 0);
+    text_blob_free(select_text_blob);
 
     ret = text_blob_delete_by_id(conn, 1);
     CU_ASSERT(ret == SORM_OK);
@@ -2036,6 +2093,7 @@ static void test_blob(void)
     assert(blob_p != NULL);
     CU_ASSERT(blob.i == blob_p->i);
     CU_ASSERT(blob.d == blob_p->d);
+    text_blob_free(select_text_blob);
 
     ret = text_blob_delete_by_id(conn, 1);
     CU_ASSERT(ret == SORM_OK);
@@ -2061,6 +2119,7 @@ static void test_blob(void)
     CU_ASSERT(0 == select_text_blob->blob_heap_len);
     CU_ASSERT(strlen(text_blob->blob_stack) == 0);
     CU_ASSERT(strlen(select_text_blob->blob_stack) == 0);
+    text_blob_free(select_text_blob);
 
     ret = text_blob_delete_by_id(conn, 1);
     CU_ASSERT(ret == SORM_OK);
@@ -2082,7 +2141,7 @@ static CU_TestInfo tests_device[] = {
     {"06.test_device_select_too_long", test_device_select_too_long},
     {"07.test_device_noexist", test_device_noexist},
     {"08.test_transaction", test_transaction},
-    {"01.test_delete_by_id", test_delete_by_id},
+    {"09.test_delete_by_id", test_delete_by_id},
     {"10.test_select_columns", test_select_columns},
     {"11.test_select_by_column", test_select_by_column},
     {"12.test_select_null", test_select_null},
@@ -2106,7 +2165,7 @@ static CU_TestInfo tests_sorm[] = {
 
 
 static CU_SuiteInfo suites[] = {
-    {"TestDevice", suite_sorm_init, suite_sorm_final, tests_device},
+    //{"TestDevice", suite_sorm_init, suite_sorm_final, tests_device},
     {"TestSorm", suite_sorm_init, suite_sorm_final, tests_sorm},
     CU_SUITE_INFO_NULL,
 };

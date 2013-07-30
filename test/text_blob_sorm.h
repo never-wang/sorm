@@ -40,6 +40,8 @@ text_blob_t* text_blob_new();
 
 void text_blob_free(text_blob_t *text_blob);
 
+void text_blob_free_array(text_blob_t *text_blob, int n);
+
 int text_blob_create_table(const sorm_connection_t *conn);
 
 int text_blob_delete_table(const sorm_connection_t *conn);
