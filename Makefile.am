@@ -1,2 +1,2 @@
-SUBDIRS = third-part src test
+SUBDIRS = third-part utils src test
 ACLOCAL_AMFLAGS = -I m4

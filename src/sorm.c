@@ -1552,6 +1552,7 @@ int sorm_save(
     int offset;
     int ret, ret_val;
     int bind_index, i;
+    int row_id;
     //log_debug("Start");
 
     if(table_desc == NULL)
@@ -1660,6 +1661,31 @@ int sorm_save(
     }
 
     //log_debug("Success return");
+    /* get autoset PK value from db */
+    if(table_desc->PK_index != SORM_NO_PK)
+    {
+        /* add lock beacuse  a separte thread can influence the rowid result*/
+        if((conn->transaction_num == 0) && 
+                (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
+        {
+            sem_p(conn->sem_key);
+        }
+
+        row_id = sqlite3_last_insert_rowid(conn->sqlite3_handle);
+        ret = sorm_set_column_value(table_desc, table_desc->PK_index, &row_id, 0);
+        if(ret != SORM_OK)
+        {
+            log_error("set PK value fail.");
+            return ret;
+        }
+
+        if((conn->transaction_num == 0) && 
+                (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
+        {
+            sem_v(conn->sem_key);
+        }
+    }
+
     ret_val = SORM_OK;
 
 DB_FINALIZE :
