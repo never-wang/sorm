@@ -2004,6 +2004,38 @@ static void test_create_drop_conflict(void)
     CU_ASSERT(ret == SORM_OK);
 }
 
+static void test_PK(void)
+{
+    device_t *device;
+    int index = 0;
+    int ret, i;
+    char tmp[SQL_STMT_MAX_LEN];
+
+    device = device_new();
+    sprintf(tmp, "uuid-%d", index);
+    device_set_uuid(device, tmp);
+    ret = device_save(conn, device);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(device->id == 1);
+    device_free(device);
+
+    for(i = 2; i <= 10; i ++)
+    {
+        device = device_new();
+        sprintf(tmp, "uuid-%d", i);
+        device_set_uuid(device, tmp);
+        ret = device_save(conn, device);
+        CU_ASSERT(ret == SORM_OK);
+        CU_ASSERT(device->id == i);
+        device_free(device);
+    }
+
+    for(i = 0; i < 10; i ++)
+    {
+        ret = device_delete_by_id(conn, i);
+    }
+}
+
 static void test_text(void)
 {
     text_blob_t *text_blob, *select_text_blob;
@@ -2190,6 +2222,7 @@ static CU_TestInfo tests_device[] = {
     {"12.test_select_null", test_select_null},
     {"13.test_index", test_index},
     {"14.test_create_drop_conflict", test_create_drop_conflict},
+    {"15.test_PK", test_PK}, 
     CU_TEST_INFO_NULL,
 };
 
