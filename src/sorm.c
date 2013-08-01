@@ -2001,7 +2001,7 @@ static int _select(
     for(i = 0; i < tables_num; i ++)
     {
         select_columns_of_tables[i].indexes_in_result = 
-            malloc(sizeof(int) * tables_desc[i]->columns_num);
+            mem_malloc(sizeof(int) * tables_desc[i]->columns_num);
         if(select_columns_of_tables[i].indexes_in_result == NULL)
         {
             log_error("mem_malloc fail.");
