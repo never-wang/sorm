@@ -30,7 +30,7 @@ static void header_generate_struct(
             INDENT "sorm_table_descriptor_t table_desc;\n\n",
             table_desc->name);
     
-    upper_table_name = mem_malloc(strlen(table_desc->name) + 1);
+    upper_table_name = sys_malloc(strlen(table_desc->name) + 1);
     case_lower2upper(table_desc->name, upper_table_name);
 
     for(i = 0; i < table_desc->columns_num; i ++)
@@ -56,7 +56,7 @@ static void header_generate_struct(
                             table_desc->columns[i].name);
                 }else if(table_desc->columns[i].mem == SORM_MEM_STACK)
                 {
-                    upper_column_name = mem_malloc(
+                    upper_column_name = sys_malloc(
                             strlen(table_desc->columns[i].name) + 1);
                     case_lower2upper(
                             table_desc->columns[i].name, upper_column_name);
@@ -64,7 +64,7 @@ static void header_generate_struct(
                     fprintf(file, INDENT "char        %s[%s_%s_MAX_LEN + 1];\n\n",
                             table_desc->columns[i].name,
                             upper_table_name, upper_column_name);
-                    mem_free(upper_column_name);
+                    sys_free(upper_column_name);
                     upper_column_name = NULL;
                 }else
                 {
@@ -83,7 +83,7 @@ static void header_generate_struct(
                             table_desc->columns[i].name);
                 }else if(table_desc->columns[i].mem == SORM_MEM_STACK)
                 {
-                    upper_column_name = mem_malloc(
+                    upper_column_name = sys_malloc(
                             strlen(table_desc->columns[i].name) + 1);
                     case_lower2upper(
                             table_desc->columns[i].name, upper_column_name);
@@ -91,7 +91,7 @@ static void header_generate_struct(
                     fprintf(file, INDENT "char        %s[%s_%s_MAX_LEN + 1];\n\n",
                             table_desc->columns[i].name,
                             upper_table_name, upper_column_name);
-                    mem_free(upper_column_name);
+                    sys_free(upper_column_name);
                     upper_column_name = NULL;
                 }else
                 {
@@ -106,7 +106,7 @@ static void header_generate_struct(
 
     }
 
-    mem_free(upper_table_name);
+    sys_free(upper_table_name);
     fprintf(file, "} %s_t;\n\n", table_desc->name);
 }
 
@@ -370,18 +370,18 @@ void header_generate(
     int i;
 
     table_name_len = strlen(table_desc->name);
-    file_name = mem_malloc(table_name_len + 8);
+    file_name = sys_malloc(table_name_len + 8);
     sprintf(file_name, "%s_sorm.h", table_desc->name);
     
     file = fopen(file_name, "w");
-    mem_free(file_name);
+    sys_free(file_name);
     if(file == NULL)
     {
         error("fopen file(%s) error : %s.", file_name, strerror(errno));
         return;
     }
     
-    upper_table_name = mem_malloc(table_name_len + 1);
+    upper_table_name = sys_malloc(table_name_len + 1);
     case_lower2upper(table_desc->name, upper_table_name);
 
     fprintf(file, "#ifndef %s_SORM_H\n"
@@ -392,7 +392,7 @@ void header_generate(
     for(i = 0; i < table_desc->columns_num; i ++)
     {
         upper_column_name = 
-            mem_malloc(strlen(table_desc->columns[i].name) + 1);
+            sys_malloc(strlen(table_desc->columns[i].name) + 1);
         case_lower2upper(table_desc->columns[i].name, upper_column_name);
         fprintf(file, "#define %s_%s_MAX_LEN %d\n", 
                 upper_table_name, upper_column_name, 
@@ -406,7 +406,7 @@ void header_generate(
     fprintf(file, "#define %s_DESC %s_get_desc()\n\n", upper_table_name, 
             table_desc->name);
 
-    mem_free(upper_table_name);
+    sys_free(upper_table_name);
 
     /* typedef struct xxxx_s */
     header_generate_struct(file, table_desc);

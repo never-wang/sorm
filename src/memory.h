@@ -25,8 +25,13 @@ typedef struct mem_allocator_s
     void *memory_pool;
 }mem_allocator_t;
 
-void* mem_malloc(size_t size);
-void mem_free(void *ptr);
-char* mem_strdup(const char *str);
+/* usr define allocator, used for new and select */
+void* usr_malloc(size_t size);
+void usr_free(void *ptr);
+char* usr_strdup(const char *str);
+/* system allocator, used to malloc self used memory */
+void* sys_malloc(size_t size);
+void sys_free(void *ptr);
+char* sys_strdup(const char *str);
 
 #endif

@@ -205,8 +205,6 @@ typedef struct sorm_table_descriptor_s
 /** @brief: conection to an opened database */
 typedef struct sorm_connection_s
 {
-    char *db_file_path;	    /* database file path */
-
     sqlite3 *sqlite3_handle;	/* sqlite3 database handle*/
 
     sorm_db_t db;    /* database type */

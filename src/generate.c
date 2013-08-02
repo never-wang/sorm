@@ -41,13 +41,13 @@ int main(int argc, char **argv)
 
     for(argv_index = 1; argv_index < argc; argv_index ++)
     {
-        table_desc = mem_malloc(sizeof(sorm_table_descriptor_t));
+        table_desc = sys_malloc(sizeof(sorm_table_descriptor_t));
         memset(table_desc, 0, sizeof(sorm_table_descriptor_t));
 
-        columns_list_head = mem_malloc(sizeof(sorm_list_t));
+        columns_list_head = sys_malloc(sizeof(sorm_list_t));
         INIT_LIST_HEAD(columns_list_head);
 
-        column_desc = mem_malloc(sizeof(sorm_column_descriptor_t));
+        column_desc = sys_malloc(sizeof(sorm_column_descriptor_t));
         memset(column_desc, 0, sizeof(sorm_column_descriptor_t));
 
         yyin = fopen(argv[argv_index], "r");
@@ -61,10 +61,10 @@ int main(int argc, char **argv)
 
         yyparse();
 
-        mem_free(column_desc);
+        sys_free(column_desc);
         column_desc = NULL;
 
-        table_desc->columns = mem_malloc(sizeof(sorm_column_descriptor_t) * 
+        table_desc->columns = sys_malloc(sizeof(sorm_column_descriptor_t) * 
                 table_desc->columns_num);
         i = 0;
         table_desc->PK_index = SORM_NO_PK;
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
         {
             memcpy(&table_desc->columns[i], pos->data, 
                     sizeof(sorm_column_descriptor_t));
-            mem_free(pos);
+            sys_free(pos);
             if((table_desc->columns[i].type == SORM_CONSTRAINT_PK) ||
                     (table_desc->columns[i].type == SORM_CONSTRAINT_PK_ASC) ||
                     (table_desc->columns[i].type == SORM_CONSTRAINT_PK_DESC))
@@ -85,18 +85,18 @@ int main(int argc, char **argv)
                 {
                     printf("There should be only one Primary Key in a table.\n");
                     sorm_list_free(columns_list_head);
-                    mem_free(table_desc->columns);
-                    mem_free(table_desc);
+                    sys_free(table_desc->columns);
+                    sys_free(table_desc);
                 }
                 i ++;
             }
         }
-        mem_free(columns_list_head);
+        sys_free(columns_list_head);
 
         header_generate(table_desc);
         c_generate(table_desc);
-        mem_free(table_desc->columns);
-        mem_free(table_desc);
+        sys_free(table_desc->columns);
+        sys_free(table_desc);
     }
 
     return 0;

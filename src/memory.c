@@ -61,7 +61,15 @@ static inline char* system_strdup(void *memory_pool, const char *string)
     return NULL;
 }
     
-static mem_allocator_t allocator = 
+static mem_allocator_t usr_allocator = 
+{
+    system_alloc,
+    system_free,
+    system_strdup,
+    NULL,
+};
+
+static const mem_allocator_t sys_allocator = 
 {
     system_alloc,
     system_free,
@@ -74,23 +82,38 @@ void mem_set_allocator(void *memory_pool,
     void(*_free)(void *memory_pool, void *point), 
     char*(*_strdup)(void *memory_pool, const char *string))
 {
-    allocator.memory_pool = memory_pool;
-    allocator._alloc = (_alloc == NULL) ? system_alloc : _alloc;
-    allocator._free = _free;
-    allocator._strdup = (_strdup == NULL) ? system_strdup : _strdup;
+    usr_allocator.memory_pool = memory_pool;
+    usr_allocator._alloc = (_alloc == NULL) ? system_alloc : _alloc;
+    usr_allocator._free = _free;
+    usr_allocator._strdup = (_strdup == NULL) ? system_strdup : _strdup;
 }
 
-void* mem_malloc(size_t size)
+void* usr_malloc(size_t size)
 {
-    return allocator._alloc(allocator.memory_pool, size);
+    return usr_allocator._alloc(usr_allocator.memory_pool, size);
 }
 
-void mem_free(void *ptr)
+void usr_free(void *ptr)
 {
-    return allocator._free(allocator.memory_pool, ptr);
+    return usr_allocator._free(usr_allocator.memory_pool, ptr);
 }
 
-char* mem_strdup(const char *str)
+char* usr_strdup(const char *str)
 {
-    return allocator._strdup(allocator.memory_pool, str);
+    return usr_allocator._strdup(usr_allocator.memory_pool, str);
+}
+
+void* sys_malloc(size_t size)
+{
+    return sys_allocator._alloc(sys_allocator.memory_pool, size);
+}
+
+void sys_free(void *ptr)
+{
+    return sys_allocator._free(sys_allocator.memory_pool, ptr);
+}
+
+char* sys_strdup(const char *str)
+{
+    return sys_allocator._strdup(sys_allocator.memory_pool, str);
 }

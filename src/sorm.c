@@ -64,9 +64,9 @@ void _list_free(sorm_list_t *sorm_list, void (*data_free)(void*))
             {
                 data_free(pos->data);
             }
-            mem_free(pos);
+            usr_free(pos);
         }
-        mem_free(sorm_list);
+        usr_free(sorm_list);
     }
     //log_debug("Success return.");
 }
@@ -96,11 +96,11 @@ static inline void __list_cpy_free(
         {
             data_free(pos->data);
         }
-        mem_free(pos);
+        usr_free(pos);
     }
 
     assert(i == n);
-    mem_free(sorm_list);
+    usr_free(sorm_list);
     //log_debug("Success return");
 }
 
@@ -329,7 +329,7 @@ static inline int _sqlite3_column(
         case SORM_TYPE_TEXT :
             if(column_desc->mem == SORM_MEM_HEAP)
             {
-                text = mem_strdup((char *)sqlite3_column_text(
+                text = usr_strdup((char *)sqlite3_column_text(
                             stmt_handle, result_index));
                 _heap_member_pointer(table_desc, column_desc->offset) = text; 
                 _add_column_stat(table_desc, column_index, 
@@ -371,7 +371,7 @@ static inline int _sqlite3_column(
                 blob_len = sqlite3_column_bytes(stmt_handle, result_index);
                 if(blob_len != 0)
                 {
-                    blob = mem_malloc(blob_len);
+                    blob = usr_malloc(blob_len);
                     if(blob == NULL)
                     {
                         log_error("malloc for blob fail");
@@ -489,11 +489,11 @@ static inline int _get_number_from_columns_name(
     assert(columns_name != NULL);
     assert(columns_num != NULL);
 
-    column_name = _columns_name = mem_strdup(columns_name);
+    column_name = _columns_name = sys_strdup(columns_name);
     //column_name used to find column_name, _columns_name used for free
     if(column_name == NULL)
     {
-        log_debug("mem_strdup for column_name fail");
+        log_debug("sys_strdup for column_name fail");
         return;
     }
 
@@ -574,7 +574,7 @@ static inline int _get_number_from_columns_name(
 
     }while(delimiter != NULL);
 
-    mem_free(_columns_name);
+    sys_free(_columns_name);
 
     for(i = 0; i < tables_num; i ++)
     {
@@ -719,7 +719,6 @@ static inline int _columns_name_to_select_columns(
 {
     char* delimiter;
     char *column_name = NULL, *_columns_name = NULL;
-    char **column_name_array = NULL;
     int i, j, 
         ret, _columns_num, result_columns_num, total_columns_num;
     int table_index, column_index;
@@ -732,10 +731,10 @@ static inline int _columns_name_to_select_columns(
     //log_debug("Start.");
     //
 
-    column_name = _columns_name = mem_strdup(columns_name);
+    column_name = _columns_name = sys_strdup(columns_name);
     if(column_name == NULL)
     {
-        log_debug("mem_strdup for columns_name fail");
+        log_debug("sys_strdup for columns_name fail");
         ret_val = SORM_NOMEM;
         goto RETURN;
     }
@@ -821,14 +820,8 @@ static inline int _columns_name_to_select_columns(
 RETURN :
     if(_columns_name != NULL)
     {
-        mem_free(_columns_name);
+        sys_free(_columns_name);
         _columns_name = NULL;
-    }
-
-    if(column_name_array != NULL)
-    {
-        mem_free(column_name_array);
-        column_name_array = NULL;
     }
 
     return ret_val;
@@ -1051,21 +1044,21 @@ int sorm_open(
 
     log_debug("open db path(%s)", path);
 
-    _connection = mem_malloc(sizeof(sorm_connection_t));
+    _connection = usr_malloc(sizeof(sorm_connection_t));
     if(_connection == NULL)
     {
-        log_debug("mem_malloc for _connection fail");
+        log_debug("usr_malloc for _connection fail");
         return SORM_NOMEM;
     }
 
     memset(_connection, 0, sizeof(sorm_connection_t));
 
-    _connection->db_file_path = mem_strdup(path);
-    if(_connection->db_file_path == NULL)
-    {
-        log_debug("mem_strdup for database file path fail");
-        return SORM_NOMEM;
-    }
+    //_connection->db_file_path = usr_strdup(path);
+    //if(_connection->db_file_path == NULL)
+    //{
+    //    log_debug("usr_strdup for database file path fail");
+    //    return SORM_NOMEM;
+    //}
     _connection->db = db;
     _connection->transaction_num = 0;
 
@@ -1384,10 +1377,10 @@ sorm_new_array(
         return NULL;
     }
 
-    table_desc = mem_malloc(init_table_desc->size * n);
+    table_desc = usr_malloc(init_table_desc->size * n);
     if(table_desc == NULL)
     {
-        log_debug("mem_malloc fail");
+        log_debug("usr_malloc fail");
         return NULL;
     }
     memset(table_desc, 0, init_table_desc->size * n);
@@ -1437,12 +1430,12 @@ void sorm_free_array(
                                 table_desc_pos->columns[j].type == 
                                 SORM_TYPE_BLOB));
                     assert(table_desc_pos->columns[j].mem == SORM_MEM_HEAP);
-                    mem_free(_heap_member_pointer(table_desc_pos,
+                    usr_free(_heap_member_pointer(table_desc_pos,
                                 table_desc_pos->columns[j].offset));
                 }
             }
         }
-        mem_free(table_desc);
+        usr_free(table_desc);
     }
     //log_debug("Success return");
 }
@@ -1990,10 +1983,10 @@ static int _select(
         return SORM_ARG_NULL;
     }
 
-    select_columns_of_tables = mem_malloc(sizeof(select_columns_t) * tables_num);
+    select_columns_of_tables = sys_malloc(sizeof(select_columns_t) * tables_num);
     if(select_columns_of_tables == NULL)
     {
-        log_error("mem_malloc fail.");
+        log_error("malloc fail.");
         ret_val = SORM_NOMEM;
         goto RETURN;
     }
@@ -2001,10 +1994,10 @@ static int _select(
     for(i = 0; i < tables_num; i ++)
     {
         select_columns_of_tables[i].indexes_in_result = 
-            mem_malloc(sizeof(int) * tables_desc[i]->columns_num);
+            sys_malloc(sizeof(int) * tables_desc[i]->columns_num);
         if(select_columns_of_tables[i].indexes_in_result == NULL)
         {
-            log_error("mem_malloc fail.");
+            log_error("malloc fail.");
             ret_val = SORM_NOMEM;
             goto RETURN;
         }
@@ -2100,10 +2093,10 @@ RETURN :
         {
             if(select_columns_of_tables[i].indexes_in_result != NULL) 
             {
-                mem_free(select_columns_of_tables[i].indexes_in_result);
+                sys_free(select_columns_of_tables[i].indexes_in_result);
             }
         }
-        mem_free(select_columns_of_tables);
+        sys_free(select_columns_of_tables);
     }
 
     log_debug("select row number(%d)", *rows_num);
@@ -2211,7 +2204,7 @@ RETURN :
     {
         for(i = 0; i < tables_num; i ++)
         {
-            mem_free(rows_of_tables[i]);
+            usr_free(rows_of_tables[i]);
             rows_of_tables[i] = NULL;
         }
     }
@@ -2251,7 +2244,7 @@ int _select_some_list_core(
         if((select_columns_of_tables[i].columns_num != 0) &&
                 (is_table_select[i] == 1))
         {
-            rows_of_tables[i] = mem_malloc(sizeof(sorm_list_t));
+            rows_of_tables[i] = usr_malloc(sizeof(sorm_list_t));
             if(rows_of_tables[i] == NULL)
             {
                 log_error("malloc for sorm_list error.");
@@ -2275,10 +2268,10 @@ int _select_some_list_core(
                 if((select_columns_of_tables[i].columns_num != 0) &&
                         (is_table_select[i] == 1))
                 {
-                    list_entry = mem_malloc(sizeof(sorm_list_t));
+                    list_entry = usr_malloc(sizeof(sorm_list_t));
                     if(list_entry == NULL)
                     {
-                        log_error("mem_malloc for list_entry fail.");
+                        log_error("usr_malloc for list_entry fail.");
                         ret_val = SORM_NOMEM;
                         goto RETURN;
                     }
@@ -2360,7 +2353,7 @@ int _select_all_list_core(
         if((select_columns_of_tables[i].columns_num != 0) &&
                 (is_table_select[i] == 1))
         {
-            rows_of_tables[i] = mem_malloc(sizeof(sorm_list_t));
+            rows_of_tables[i] = usr_malloc(sizeof(sorm_list_t));
             if(rows_of_tables[i] == NULL)
             {
                 log_error("malloc for sorm_list error.");
@@ -2383,10 +2376,10 @@ int _select_all_list_core(
                 if((select_columns_of_tables[i].columns_num != 0) &&
                         (is_table_select[i] == 1))
                 {
-                    list_entry = mem_malloc(sizeof(sorm_list_t));
+                    list_entry = usr_malloc(sizeof(sorm_list_t));
                     if(list_entry == NULL)
                     {
-                        log_error("mem_malloc for list_entry fail.");
+                        log_error("usr_malloc for list_entry fail.");
                         ret_val = SORM_NOMEM;
                         goto RETURN;
                     }
@@ -2531,7 +2524,7 @@ int sorm_select_all_array_by(
             sorm_list_free(row_head);
             return SORM_NOMEM;
         }
-        _list_cpy_free(table_desc, row_head, *n, _get_row, mem_free);
+        _list_cpy_free(table_desc, row_head, *n, _get_row, usr_free);
         *get_row = _get_row;
     }
 
@@ -2694,7 +2687,7 @@ int sorm_select_all_array_by_join(
             return SORM_NOMEM;
         }
         _list_cpy_free(table1_desc, table1_row_head, *rows_num, 
-                _table1_rows, mem_free);
+                _table1_rows, usr_free);
     
         *table1_rows = _table1_rows;
     }
@@ -2707,7 +2700,7 @@ int sorm_select_all_array_by_join(
             return SORM_NOMEM;
         }
         _list_cpy_free(table2_desc, table2_row_head, *rows_num,
-                _table2_rows, mem_free);
+                _table2_rows, usr_free);
         *table2_rows = _table2_rows;
     }
 
@@ -2989,83 +2982,6 @@ DB_FINALIZE :
         return SORM_OK;
     }
 }
-//int sorm_select_callback_by(
-//        const sorm_connection_t *conn, const sorm_table_descriptor_t *desc,
-//        const char *filter,
-//        (void*)(*callback)(void*))
-//{
-//    const sorm_column_descriptor_t *column_desc = NULL;
-//
-//    if(conn == NULL)
-//    {
-//        log_debug("Param conn is NULL");
-//        return SORM_INVALID_NUM;
-//    }
-//    if(table_desc == NULL)
-//    {
-//        log_debug("Param desc is NULL");
-//        return SORM_INVALID_NUM;
-//    }
-//    
-//    column_desc = table_desc->columns;
-//    
-//    /* construct sqlite3 statement */
-//    ret = _construct_select_stmt(sql_stmt, table_desc->name, 
-//            columns_name, &offset);
-//    if(ret != SORM_OK)
-//    {
-//        log_debug("_construct_select_stmt error.");
-//        return ret;
-//    }
-//    ret = _construct_filter_stmt(sql_stmt, filter, &offset);
-//    if(ret != SORM_OK)
-//    {
-//        log_debug("_construct_filter_stmt error.");
-//        return ret;
-//    }
-//
-//    log_debug("prepare stmt : %s", sql_stmt);
-//
-//    /* sqlite3_prepare */
-//    ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
-//            SQL_STMT_MAX_LEN, &stmt_handle, NULL);
-//    if(ret != SQLITE_OK)
-//    {
-//        log_debug("sqlite3_prepare error : %s", 
-//                sqlite3_errmsg(conn->sqlite3_handle));
-//        return SORM_DB_ERROR;
-//    }
-//    
-//    while(1)
-//    {
-//        ret = SQLITE_BUSY;
-//        while(ret == SQLITE_BUSY)
-//        {
-//            ret = sqlite3_step(stmt_handle);
-//        }
-//        if(ret == SQLITE_ROW) //a new row
-//        {
-//            (*n)++;
-//            log_debug("now get row number(%d)", *n);
-//            if(get_row_head != NULL)
-//            {
-//                ret = _parse_select_result(
-//                        conn, stmt_handle, table_desc, 
-//                        select_columns_of_table.indexes_in_result, 
-//                        _row_head);
-//                if(ret != SORM_OK)
-//                {
-//                    ret_val = ret;
-//                    goto DB_FINALIZE;
-//                }
-//            }
-//        }else	//all rows have been selected
-//        {
-//            break;
-//        }
-//    }
-//    
-//}
 
 int sorm_close(sorm_connection_t *conn)
 {
@@ -3117,8 +3033,7 @@ int sorm_close(sorm_connection_t *conn)
         return SORM_DB_ERROR;
     }
 
-    mem_free(conn->db_file_path);
-    mem_free(conn);
+    usr_free(conn);
     
     //log_debug("Success return");
     return SORM_OK;
@@ -3179,14 +3094,14 @@ int sorm_create_index(
 
     /* construct the suffix for index name */
     columns_name_len = strlen(columns_name);
-    index_suffix = mem_malloc(columns_name_len + 1); /* +1 for \0 */
+    index_suffix = sys_malloc(columns_name_len + 1); /* +1 for \0 */
     _construct_index_suffix(index_suffix, columns_name);
 
     ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1,
 	    "CREATE INDEX index_%s ON %s(%s)", 
 	    index_suffix, table_desc->name, columns_name);
 
-    mem_free(index_suffix);
+    sys_free(index_suffix);
     
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
@@ -3255,13 +3170,13 @@ int sorm_drop_index(
 
     /* construct the suffix for index name */
     columns_name_len = strlen(columns_name);
-    index_suffix = mem_malloc(columns_name_len + 1);
+    index_suffix = sys_malloc(columns_name_len + 1);
     _construct_index_suffix(index_suffix, columns_name);
 
     ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1,
 	    "DROP INDEX index_%s", index_suffix);
 
-    mem_free(index_suffix);
+    sys_free(index_suffix);
     
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {

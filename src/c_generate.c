@@ -33,13 +33,13 @@ static void c_generate_column_desc(
             "%s_columns_descriptor[%d] =\n{\n", 
             table_desc->name, table_desc->columns_num);
     
-    upper_table_name = mem_malloc(strlen(table_desc->name) + 1);
+    upper_table_name = sys_malloc(strlen(table_desc->name) + 1);
     case_lower2upper(table_desc->name, upper_table_name);
 
     for(i = 0; i < table_desc->columns_num; i ++)
     {
         column_desc = &table_desc->columns[i];
-        upper_column_name = mem_malloc(strlen(column_desc->name) + 1);
+        upper_column_name = sys_malloc(strlen(column_desc->name) + 1);
         case_lower2upper(column_desc->name, upper_column_name);
 
         fprintf(file, INDENT "{\n"         
@@ -63,11 +63,11 @@ static void c_generate_column_desc(
                 column_desc->is_foreign_key, _str(column_desc->foreign_table_name),
                 _str(column_desc->foreign_column_name));
 
-        mem_free(upper_column_name);
+        sys_free(upper_column_name);
         upper_column_name = NULL;
     }
 
-    mem_free(upper_table_name);
+    sys_free(upper_table_name);
     fprintf(file, "};\n\n");
 }
 
@@ -388,7 +388,7 @@ static void c_generate_func_select(
 	if(table_desc->columns[i].is_foreign_key == 1)
 	{
 	    foreign_table_name_len = strlen(table_desc->columns[i].foreign_table_name);
-	    upper_foreign_table_name = mem_malloc(foreign_table_name_len + 1);
+	    upper_foreign_table_name = sys_malloc(foreign_table_name_len + 1);
 	    case_lower2upper(table_desc->columns[i].foreign_table_name, upper_foreign_table_name);
 
 	    fprintf(file, "int %s_select_some_array_by_%s(\n"
@@ -440,7 +440,7 @@ static void c_generate_func_select(
 		    upper_foreign_table_name, table_desc->columns[i].foreign_column_name, 
 		    table_desc->name);
 
-	    mem_free(upper_foreign_table_name);
+	    sys_free(upper_foreign_table_name);
 	}
     }
 }
@@ -469,9 +469,9 @@ void c_generate(
     int i;
 
     table_name_len = strlen(table_desc->name);
-    file_name = mem_malloc(table_name_len + 8);
+    file_name = sys_malloc(table_name_len + 8);
     sprintf(file_name, "%s_sorm.c", table_desc->name);
-    header_file_name = mem_malloc(table_name_len + 8);
+    header_file_name = sys_malloc(table_name_len + 8);
     sprintf(header_file_name, "%s_sorm.h", table_desc->name);
     
     file = fopen(file_name, "w");
@@ -486,10 +486,10 @@ void c_generate(
 	if(table_desc->columns[i].is_foreign_key == 1)
 	{
 	    foreign_table_name_len = strlen(table_desc->columns[i].foreign_table_name);
-	    foreign_header_file_name = mem_malloc(foreign_table_name_len + 8);
+	    foreign_header_file_name = sys_malloc(foreign_table_name_len + 8);
 	    sprintf(foreign_header_file_name, "%s_sorm.h", table_desc->columns[i].foreign_table_name);
 	    fprintf(file, "#include \"%s\"\n", foreign_header_file_name);
-	    mem_free(foreign_header_file_name);
+	    sys_free(foreign_header_file_name);
 	}
     }
     
