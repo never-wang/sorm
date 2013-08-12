@@ -16,7 +16,7 @@ int sem_init(int sem_key)
         sem_id = semget(sem_key, 1, 0666 | IPC_CREAT);
         sem_union.val = 1;
         if(semctl(sem_id, 0, SETVAL, sem_union) == -1){
-            printf("semctl fail : %s\n", strerror(errno));
+            log_error("semctl fail : %s\n", strerror(errno));
             return SEM_INIT_FAIL;
         }
     }
@@ -45,7 +45,7 @@ int sem_p(int sem_key)
         sem_id = semget(sem_key, 1, 0666 | IPC_CREAT);
         sem_union.val = 1;
         if(semctl(sem_id, 0, SETVAL, sem_union) == -1){
-            printf("semctl fail : %s\n", strerror(errno));
+            log_error("semctl fail : %s\n", strerror(errno));
             return SEM_INIT_FAIL;
         }
     }
@@ -72,7 +72,7 @@ int sem_v(int sem_key)
         sem_id = semget(sem_key, 1, 0666 | IPC_CREAT);
         sem_union.val = 1;
         if(semctl(sem_id, 0, SETVAL, sem_union) == -1){
-            printf("semctl fail : %s\n", strerror(errno));
+            log_error("semctl fail : %s\n", strerror(errno));
             return SEM_INIT_FAIL;
         }
     }

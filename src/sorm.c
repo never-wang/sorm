@@ -29,7 +29,7 @@
     ((char*)(table_desc) + (member_offset))
 #define _type_member_pointer(table_desc, offset, type) \
     ((type*)((char*)(table_desc) + (offset)))
-    
+
 
 /** @brief: type to string which is used in sql statement */
 static const char* sorm_type_db_str[] = 
@@ -444,7 +444,7 @@ static inline int _sqlite3_prepare(
 {
     int ret;
     assert(conn != NULL);
-    
+
     if((conn->transaction_num == 0) && 
 	    (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
     {
