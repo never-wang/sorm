@@ -15,8 +15,6 @@
 #ifndef LOG_H
 #define LOG_H
 
-
-#include "zlog.h"
 #include "config.h"
 
 typedef enum
@@ -26,6 +24,8 @@ typedef enum
 }log_error_t;
 
 #ifdef ENABLE_ZLOG
+
+#include "zlog.h"
 
 extern zlog_category_t *zlog_category;
 
