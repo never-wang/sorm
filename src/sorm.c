@@ -901,7 +901,7 @@ static inline int _construct_column_filter(
                     column_desc->name, *((int32_t*)column_value));
             break;
         case SORM_TYPE_TEXT :
-            offset = snprintf(filter, SQL_STMT_MAX_LEN + 1, "%s = %s", 
+            offset = snprintf(filter, SQL_STMT_MAX_LEN + 1, "%s = '%s'", 
                     column_desc->name, (char*)column_value);
             break;
         case SORM_TYPE_DOUBLE :
