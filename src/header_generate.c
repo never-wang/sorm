@@ -387,7 +387,7 @@ void header_generate(
     fprintf(file, "#ifndef %s_SORM_H\n"
                   "#define %s_SORM_H\n\n", upper_table_name, upper_table_name);
     fprintf(file, "#include \"sorm.h\"\n\n");
-    
+
     /* #define XX_XX_MAX_LEN XX */
     for(i = 0; i < table_desc->columns_num; i ++)
     {

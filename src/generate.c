@@ -14,6 +14,7 @@
  ***************************************************************************/
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 
 #include "parser_yacc.h"
 #include "stdio.h"
@@ -73,9 +74,9 @@ int main(int argc, char **argv)
             memcpy(&table_desc->columns[i], pos->data, 
                     sizeof(sorm_column_descriptor_t));
             sys_free(pos);
-            if((table_desc->columns[i].type == SORM_CONSTRAINT_PK) ||
-                    (table_desc->columns[i].type == SORM_CONSTRAINT_PK_ASC) ||
-                    (table_desc->columns[i].type == SORM_CONSTRAINT_PK_DESC))
+            if((table_desc->columns[i].constraint == SORM_CONSTRAINT_PK) ||
+                    (table_desc->columns[i].constraint == SORM_CONSTRAINT_PK_ASC) ||
+                    (table_desc->columns[i].constraint == SORM_CONSTRAINT_PK_DESC))
             {
                 if(has_PK == 0)
                 {
@@ -88,10 +89,12 @@ int main(int argc, char **argv)
                     sys_free(table_desc->columns);
                     sys_free(table_desc);
                 }
-                i ++;
             }
+            i ++;
         }
         sys_free(columns_list_head);
+
+        assert(table_desc != NULL);
 
         header_generate(table_desc);
         c_generate(table_desc);
