@@ -9,7 +9,7 @@
  *       Compiler:  gcc
  *
  *         Author:  Wang Wencan 
- *	    Email:  never.wencan@gmail.com
+ *          Email:  never.wencan@gmail.com
  ***************************************************************************/
 #ifndef C_GENERATE_H
 #define C_GENERATE_H

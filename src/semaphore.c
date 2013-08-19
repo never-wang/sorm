@@ -66,7 +66,7 @@ int sem_v(int sem_key)
     struct sembuf sem_b;
     union semun sem_union;
     int sem_id;
-    
+
     sem_id = semget(sem_key, 1, 0);
     if(sem_id == -1){   /* need create a new one */
         sem_id = semget(sem_key, 1, 0666 | IPC_CREAT);
@@ -85,7 +85,7 @@ int sem_v(int sem_key)
         log_error("semop fail : %s", strerror(errno));
         return SEM_OP_FAIL;
     }
-    
+
     return SEM_OK;
 }
 

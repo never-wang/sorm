@@ -9,7 +9,7 @@
  *       Compiler:  gcc
  *
  *         Author:  Wang Wencan 
- *	    Email:  never.wencan@gmail.com
+ *        Email:  never.wencan@gmail.com
  *        Company:  HPC Tsinghua
  ***************************************************************************/
 #ifndef SORM_H
@@ -22,8 +22,8 @@
 #include "sqlite3.h"
 
 /* open flags */
-#define SORM_ENABLE_FOREIGN_KEY	    0x1 /* enable foreign key support in sqlite3 */
-#define SORM_ENABLE_SEMAPHORE	    0x2	/* enable semaphore in sorm */
+#define SORM_ENABLE_FOREIGN_KEY        0x1 /* enable foreign key support in sqlite3 */
+#define SORM_ENABLE_SEMAPHORE        0x2    /* enable semaphore in sorm */
 
 #define sorm_foreign_key_enabled(flags) \
     ((SORM_ENABLE_FOREIGN_KEY & (flags)) == SORM_ENABLE_FOREIGN_KEY)
@@ -66,7 +66,7 @@ typedef struct sorm_list_s
 
 #define sorm_list_for_each_safe(pos, scratch, head) \
     for(pos = (head)->next, scratch = pos->next; pos != (head); \
-	    pos = scratch, scratch = pos->next)
+            pos = scratch, scratch = pos->next)
 #define sorm_list_free(head) _list_free(head, (void*)(sorm_free))
 
 /**
@@ -75,7 +75,7 @@ typedef struct sorm_list_s
 inline void _list_free(sorm_list_t *sorm_list, void (*data_free)(void*));
 
 static inline void _list_add(
-	sorm_list_t *new, sorm_list_t *prev, sorm_list_t *next)
+        sorm_list_t *new, sorm_list_t *prev, sorm_list_t *next)
 {
     new->next = prev->next;
     prev->next = new;
@@ -97,8 +97,8 @@ static inline void list_add_head(sorm_list_t *new, sorm_list_t *head)
 /** @brief: error code for sorm */
 typedef enum
 {
-    SORM_OK			=    0,
-    SORM_NOMEM,	    
+    SORM_OK            =    0,
+    SORM_NOMEM,        
     /* an malloc() fail */
     SORM_DB_ERROR,
     /* error from sqlite3 functions, it may happen if you set the invalid
@@ -125,7 +125,7 @@ typedef enum
 /** @brief: join type */
 typedef enum
 {
-    SORM_INNER_JOIN	=   0,
+    SORM_INNER_JOIN    =   0,
     SORM_LEFT_JOIN,
     //SORM_RIGHT_JOIN, /* not supported in sqlite3 */
     //SORM_FULL_JOIN,
@@ -134,11 +134,11 @@ typedef enum
 /** @brief: sorm_type_t for value */
 typedef enum
 {
-    SORM_TYPE_INT	=   0,
+    SORM_TYPE_INT    =   0,
     //SORM_TYPE_INT64,
     SORM_TYPE_TEXT,
     SORM_TYPE_DOUBLE,
-    SORM_TYPE_BLOB,	/* BLOB TYPE, for binary data */
+    SORM_TYPE_BLOB,    /* BLOB TYPE, for binary data */
 } sorm_type_t;
 
 /** @brief: memory type for string */
@@ -151,7 +151,7 @@ typedef enum
 
 typedef enum
 {
-    SORM_CONSTRAINT_NONE	=   0,
+    SORM_CONSTRAINT_NONE    =   0,
     SORM_CONSTRAINT_PK,
     SORM_CONSTRAINT_PK_ASC,
     SORM_CONSTRAINT_PK_DESC,
@@ -176,16 +176,16 @@ typedef enum
 /** @brief: descriptor for a column in a table */
 typedef struct sorm_column_descriptor_s
 {
-    char *name;	    /* name of the column */
+    char *name;        /* name of the column */
     uint32_t index;    /* index of the column, start form 0 */
     sorm_type_t type;  /* data type of the column */
-    sorm_constraint_t constraint;	    /* such as PRIMARY KEY, UNIQUE */
+    sorm_constraint_t constraint;        /* such as PRIMARY KEY, UNIQUE */
     sorm_mem_t mem;      /* useful only when cloumn type is SROM_TYPE_TEXT 
                             and SORM_TYPE_BLOB*/
     int max_len; /* useful only when cloumn type is SORM_TYPE_TEXT and 
                     SORM_TYPE_BLOB*/
     size_t offset;  /* offset of the column in table structure */
-    int is_foreign_key;	/* indicates whether this is a foreign key */
+    int is_foreign_key;    /* indicates whether this is a foreign key */
     char *foreign_table_name; /* name of foreign table */
     char *foreign_column_name; /* name of foreign column name */
 } sorm_column_descriptor_t;
@@ -193,23 +193,23 @@ typedef struct sorm_column_descriptor_s
 /** @brief: descriptor for a table */
 typedef struct sorm_table_descriptor_s
 {
-    char *name;	    /* name of table */
+    char *name;        /* name of table */
     size_t size;    /* size of talbe row object */
 
-    int columns_num;	/* number of column in the table */
-    int PK_index;	/* index for Primary key, SORM_NO_PK means that there is 
-                       not Primay key */
+    int columns_num;    /* number of column in the table */
+    int PK_index;    /* index for Primary key, SORM_NO_PK means that there is 
+                        not Primay key */
     sorm_column_descriptor_t *columns; /* descriptor of columns */
 } sorm_table_descriptor_t;
 
 /** @brief: conection to an opened database */
 typedef struct sorm_connection_s
 {
-    sqlite3 *sqlite3_handle;	/* sqlite3 database handle*/
+    sqlite3 *sqlite3_handle;    /* sqlite3 database handle*/
 
     sorm_db_t db;    /* database type */
     int transaction_num;    /* deal with transaction nest */
-    
+
     /* semaphore */
     int sem_key;
 
@@ -225,18 +225,18 @@ typedef struct sorm_connection_s
 static const char* sorm_errorstr[] = 
 {
     "There is no error",        /* 0 - SORM_OK */
-    "Can not allocate memory",	/* 1 - SORM_NOMEM */
+    "Can not allocate memory",    /* 1 - SORM_NOMEM */
     "Invalid Columns name or filter, or Sqlite3 internal error", 
     /* 2 = SORM_DB_ERROR */
     "Too long sqlite3 statment",    /* 3 - SOMR_TOO_LONG */
-    "There is no Primary key",	    /* 4 - SORM_NOPK */
+    "There is no Primary key",        /* 4 - SORM_NOPK */
     "Rows to be selected do not exist",  /* 5 - SORM_NOEXIST */
     "The number of rows to be selected is invalid", 
     /* 6 - SORM_INVALID_NUM */
-    "Invalid column name",		/* 7 - SORM_INVALID_COLUMN_NAME */
-    "Invalid sorm_mem",			/* 8 - SORM_INVALID_MEM */
-    "Invalid sorm_type",		/* 9 - SORM_INVALID_TYPE */
-    "One or more arguments is NULL",	/* 10 - SORM_ARG_NULL */
+    "Invalid column name",        /* 7 - SORM_INVALID_COLUMN_NAME */
+    "Invalid sorm_mem",            /* 8 - SORM_INVALID_MEM */
+    "Invalid sorm_type",        /* 9 - SORM_INVALID_TYPE */
+    "One or more arguments is NULL",    /* 10 - SORM_ARG_NULL */
     "Sorm intialize fail",    /* 11 - SORM_INIT_FAIL / */
 };
 
@@ -309,9 +309,9 @@ static inline const char* sorm_strconstraint(sorm_constraint_t constraint)
  * @param strdup: pointer to the strdup function
  */
 void sorm_set_allocator(void *memory_pool, 
-    void*(*alloc)(void *memory_pool, size_t size), 
-    void(*free)(void *memory_pool, void *point), 
-    char*(*strdup)(void *memory_pool, const char *string));
+        void*(*alloc)(void *memory_pool, size_t size), 
+        void(*free)(void *memory_pool, void *point), 
+        char*(*strdup)(void *memory_pool, const char *string));
 
 int sorm_init();
 void sorm_final();
@@ -329,7 +329,7 @@ void sorm_final();
  */
 int sorm_open(
         const char *path, sorm_db_t db, int sem_key, int flags,
-	sorm_connection_t **connection);
+        sorm_connection_t **connection);
 
 /**
  * @brief: close the connection to a database
@@ -433,7 +433,7 @@ int sorm_delete_by_column(
         int column_index, const void *column_value);
 /**
  * @brief: delete rows from a table according the filter, the filter use
- *	the same syntax with statement after WHERE in SQL
+ *    the same syntax with statement after WHERE in SQL
  *
  * @param conn: the connection to the database
  * @param desc: the description for the table
@@ -558,10 +558,10 @@ int sorm_select_all_list_by_join(
         sorm_join_t join, const char *filter, int *n,
         sorm_list_t **table1_row_head, sorm_list_t **table2_row_head);
 int sorm_create_index(
-	const sorm_connection_t *conn, 
-	sorm_table_descriptor_t *table_desc, char *columns_name);
+        const sorm_connection_t *conn, 
+        sorm_table_descriptor_t *table_desc, char *columns_name);
 int sorm_drop_index(
-	const sorm_connection_t *conn,
-	char *columns_name);
+        const sorm_connection_t *conn,
+        char *columns_name);
 
 #endif

@@ -9,8 +9,7 @@
  *       Compiler:  gcc
  *
  *         Author:  Wang Wencan 
- *	    Email:  never.wencan@gmail.com
- *        Company:  HPC Tsinghua
+ *          Email:  never.wencan@gmail.com
  ***************************************************************************/
 #include <stdlib.h>
 #include <string.h>
@@ -60,7 +59,7 @@ static inline char* system_strdup(void *memory_pool, const char *string)
     }
     return NULL;
 }
-    
+
 static mem_allocator_t usr_allocator = 
 {
     system_alloc,
@@ -78,9 +77,9 @@ static const mem_allocator_t sys_allocator =
 };
 
 void mem_set_allocator(void *memory_pool, 
-    void*(*_alloc)(void *memory_pool, size_t size), 
-    void(*_free)(void *memory_pool, void *point), 
-    char*(*_strdup)(void *memory_pool, const char *string))
+        void*(*_alloc)(void *memory_pool, size_t size), 
+        void(*_free)(void *memory_pool, void *point), 
+        char*(*_strdup)(void *memory_pool, const char *string))
 {
     usr_allocator.memory_pool = memory_pool;
     usr_allocator._alloc = (_alloc == NULL) ? system_alloc : _alloc;

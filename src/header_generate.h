@@ -9,8 +9,7 @@
  *       Compiler:  gcc
  *
  *         Author:  Wang Wencan 
- *	    Email:  never.wencan@gmail.com
- *        Company:  HPC Tsinghua
+ *          Email:  never.wencan@gmail.com
  ***************************************************************************/
 #ifndef HEADER_GENERATE_H
 #define HEADER_GENERATE_H
@@ -18,6 +17,6 @@
 #include "sorm.h"
 
 void header_generate(
-    const sorm_table_descriptor_t *table_desc);
+        const sorm_table_descriptor_t *table_desc);
 
 #endif

@@ -1,7 +1,7 @@
 /****************************************************************************
  *       Filename:  memory.h
  *
- *    Description:  j
+ *    Description:  
  *
  *        Version:  1.0
  *        Created:  06/13/2013 02:04:17 PM
@@ -9,8 +9,7 @@
  *       Compiler:  gcc
  *
  *         Author:  Wang Wencan 
- *	    Email:  never.wencan@gmail.com
- *        Company:  HPC Tsinghua
+ *          Email:  never.wencan@gmail.com
  ***************************************************************************/
 #ifndef MEMORY_H
 #define MEMORY_H

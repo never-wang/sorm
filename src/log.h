@@ -9,11 +9,12 @@
  *       Compiler:  gcc
  *
  *         Author:  Wang Wencan 
- *	    Email:  never.wencan@gmail.com
- *        Company:  
+ *          Email:  never.wencan@gmail.com
  ***************************************************************************/
 #ifndef LOG_H
 #define LOG_H
+
+#undef ENABLE_ZLOG
 
 #include "config.h"
 

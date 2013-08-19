@@ -9,8 +9,7 @@
  *       Compiler:  gcc
  *
  *         Author:  Wang Wencan 
- *	    Email:  never.wencan@gmail.com
- *        Company:  HPC Tsinghua
+ *          Email:  never.wencan@gmail.com
  ***************************************************************************/
 #include <assert.h>
 #include <stdio.h>
@@ -24,7 +23,7 @@
 #define _list_cpy_free(desc, head, n, rows, free) \
     __list_cpy_free(desc, head, n, rows, (void*)(free))
 #define _heap_member_pointer(table_desc, member_offset) \
-     *(char **)((char*)(table_desc) + (member_offset))
+    *(char **)((char*)(table_desc) + (member_offset))
 #define _stack_member_pointer(table_desc, member_offset) \
     ((char*)(table_desc) + (member_offset))
 #define _type_member_pointer(table_desc, offset, type) \
@@ -34,16 +33,16 @@
 /** @brief: type to string which is used in sql statement */
 static const char* sorm_type_db_str[] = 
 {
-    "INTEGER",	    /* 0 - SORM_TYPE_INT32 */
-    "TEXT",	    /* 1 - SORM_TYPE_TEXT */
-    "REAL",	    /* 2 - SORM_TYPE_DOUBLE */
-    "BLOB",	    /* 3 - SORM_TYPE_BLOB */
+    "INTEGER",    /* 0 - SORM_TYPE_INT32 */
+    "TEXT",       /* 1 - SORM_TYPE_TEXT */
+    "REAL",       /* 2 - SORM_TYPE_DOUBLE */
+    "BLOB",       /* 3 - SORM_TYPE_BLOB */
 };
 
 /** @brief: used to store the information for selected columns in a table */
 typedef struct
 {
-    int columns_num;	    /* the number of selected columns */
+    int columns_num;    /* the number of selected columns */
     int *indexes_in_result;  /* the index of selected columns in result */
 }select_columns_t;
 
@@ -132,7 +131,7 @@ static inline void _add_column_stat(
 {
     assert(table_desc != NULL);
     assert((column_index >= 0) && (column_index < table_desc->columns_num));
-   
+
     sorm_stat_t stat;
     stat = _get_column_stat(table_desc, column_index);
     stat |= add_stat;
@@ -140,31 +139,31 @@ static inline void _add_column_stat(
 }
 
 static inline int _get_blob_len(
-	const sorm_table_descriptor_t *table_desc, int column_index)
+        const sorm_table_descriptor_t *table_desc, int column_index)
 {
     assert(table_desc != NULL);
     assert((column_index >= 0) && (column_index < table_desc->columns_num));
 
     return (*(int*)((char*)table_desc + table_desc->columns[column_index].offset
-		-sizeof(sorm_stat_t) - sizeof(int)));
+                -sizeof(sorm_stat_t) - sizeof(int)));
 }
 
 static inline int _set_blob_len(
-	sorm_table_descriptor_t *table_desc, int column_index, int len)
+        sorm_table_descriptor_t *table_desc, int column_index, int len)
 {
     assert(table_desc != NULL);
     assert((column_index >= 0) && (column_index < table_desc->columns_num));
 
     (*(int*)((char*)table_desc + table_desc->columns[column_index].offset
-	     -sizeof(sorm_stat_t) - sizeof(int))) = len;
+             -sizeof(sorm_stat_t) - sizeof(int))) = len;
 }
 /**
  * @brief: call sqlite3_bind to bind a column value into a prepared statement
  *
  * @param conn : the connection to the database
  * @param column_desc: the descriptor for the column
- * @param index: the index for the bind place in the prepared statment, start 
- *	from 1
+ * @param index: the index for the bind place in the prepared statment, start
+ *               from 1
  * @param table_desc: the descriptor for the table
  * @param stmt_handle: the prepared statement
  *
@@ -252,13 +251,13 @@ static int _sqlite3_column_bind(
 
 /**
  * @brief: trim a str, use * to expree blank, then a string
- *	|			      |
- *	V			      V	
- *	***string**\0  will becom  ***string\0\0\0
+ *  |                             |
+ *  V                             V
+ *  ***string**\0  will becom  ***string\0\0\0
  *
  * @param str: pointer to the string
- * @param str_end: pointer the end of string, if NULL, the function will find 
- *	the end by itself
+ * @param str_end: pointer the end of string, if NULL, the function will find
+ *      the end by itself
  */
 static inline void trim(char **str_p, char *str_end)
 {
@@ -344,11 +343,11 @@ static inline int _sqlite3_column(
                             stmt_handle, result_index);
                     ret = snprintf(_stack_member_pointer(table_desc, 
                                 column_desc->offset), 
-                                column_desc->max_len + 1, "%s", text);
-                            offset = ret;
-                            if(ret < 0 || offset > column_desc->max_len)
-                            {
-                            log_error("get too long text from db, "
+                            column_desc->max_len + 1, "%s", text);
+                    offset = ret;
+                    if(ret < 0 || offset > column_desc->max_len)
+                    {
+                        log_error("get too long text from db, "
                                 "length(%d) > max length(%d)", offset, 
                                 column_desc->max_len);
                         return SORM_TOO_LONG;
@@ -378,8 +377,8 @@ static inline int _sqlite3_column(
                         return SORM_NOMEM;
                     }
                     memcpy(blob, blob_db, blob_len);
-                _add_column_stat(table_desc, column_index, 
-                        SORM_STAT_NEEDFREE);
+                    _add_column_stat(table_desc, column_index, 
+                            SORM_STAT_NEEDFREE);
                 }else
                 {
                     blob = NULL;
@@ -392,10 +391,10 @@ static inline int _sqlite3_column(
 
                 if(blob_len > column_desc->max_len)
                 {
-                        log_error("get too long blob from db, "
-                                "length(%d) > max length(%d)", blob_len, 
-                                column_desc->max_len);
-                        return SORM_TOO_LONG;
+                    log_error("get too long blob from db, "
+                            "length(%d) > max length(%d)", blob_len, 
+                            column_desc->max_len);
+                    return SORM_TOO_LONG;
                 }
                 memcpy(_stack_member_pointer(table_desc, 
                             column_desc->offset), text, blob_len); 
@@ -404,7 +403,7 @@ static inline int _sqlite3_column(
                 log_error("unknow sorm mem : %d", column_desc->mem);
                 return SORM_INVALID_MEM;
             }
-	        _set_blob_len(table_desc, column_index, blob_len);
+            _set_blob_len(table_desc, column_index, blob_len);
             break;
         default :
             log_error("unknow sorm type : %d", column_desc->type);
@@ -422,16 +421,16 @@ static inline int  _sqlite3_step(
     int ret;
 
     if((conn->transaction_num == 0) && 
-	    (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
+            (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
     {
         sem_p(conn->sem_key);
     }
 
 
     ret = sqlite3_step(stmt_handle);
-    
+
     if((conn->transaction_num == 0) && 
-	    (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
+            (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
     {
         sem_v(conn->sem_key);
     }
@@ -446,7 +445,7 @@ static inline int _sqlite3_prepare(
     assert(conn != NULL);
 
     if((conn->transaction_num == 0) && 
-	    (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
+            (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
     {
         sem_p(conn->sem_key);
     }
@@ -454,9 +453,9 @@ static inline int _sqlite3_prepare(
 
     ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, SQL_STMT_MAX_LEN,
             stmt_handle, NULL);
-    
+
     if((conn->transaction_num == 0) && 
-	    (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
+            (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
     {
         sem_v(conn->sem_key);
     }
@@ -466,7 +465,7 @@ static inline int _sqlite3_prepare(
 
 /**
  * @brief: get the columns number in a columns_name, the function need the 
- *	description for tables to caculate the colums number for "*"
+ *         description for tables to caculate the colums number for "*"
  *
  * @param tables_num: 
  * @param tables_desc: 
@@ -532,7 +531,7 @@ static inline int _get_number_from_columns_name(
                 {
                     columns_num[i] = tables_desc[i].columns_num;
                 }
-            }else		    // column_name = _device_name.*
+            }else    // column_name = _device_name.*
             {
                 for(i = 0; i < tables_num; i ++)
                 {
@@ -552,7 +551,7 @@ static inline int _get_number_from_columns_name(
                 {
                     columns_num[i] = tables_desc[i].columns_num;
                 }
-            }else		    // column_name = _device_name.*
+            }else    // column_name = _device_name.*
             {
                 for(i = 0; i < tables_num; i ++)
                 {
@@ -587,17 +586,17 @@ static inline int _get_number_from_columns_name(
 
 /**
  * @brief: give a column_name and some tables, find the column_name is in which
- *	table and in wich column of the table
+ *      table and in wich column of the table
  *
  * @param tables_num:
  * @param tables_desc: 
  * @param column_name: the name of column, can be column_name or 
- *	device_name.column_name; 
- *	the input string may be changed, like:
- *	device.column\0 change to device\0column\0
+ *    device_name.column_name; 
+ *    the input string may be changed, like:
+ *    device.column\0 change to device\0column\0
  * @param table_index: the index of table 
  * @param column_index: the index of column, 
- *	an special vall is ALL_INDEXES for "*"
+ *    an special vall is ALL_INDEXES for "*"
  *
  * @return: error code
  */
@@ -700,11 +699,11 @@ static inline int _column_name_to_index_in_tables(
 
 /**
  * @brief: convert columns_name to a struct select_columns_t, 
- *	the struct select_columns_t has three member
- *	1. the number of columns
- *	1. the column indexes in table 
- *	2. the column indexes in result
- *	columns_name can be from multiple tables
+ *    the struct select_columns_t has three member
+ *    1. the number of columns
+ *    1. the column indexes in table 
+ *    2. the column indexes in result
+ *    columns_name can be from multiple tables
  *
  * @param table_num: the number of tables 
  * @param table_desc: 
@@ -829,7 +828,7 @@ RETURN :
 
 /**
  * @brief: parse a select result from a table to a sorm object, 
- *	and add it into a list tail
+ *    and add it into a list tail
  * @param conn: the connection to the database
  * @param stmt_handle: the select result
  * @param row: the sorm object to store the parsed result
@@ -887,13 +886,13 @@ static inline int _construct_column_filter(
     int offset;
 
     log_debug("Start.");
-    
+
     assert(table_desc != NULL);
     assert(column_value != NULL);
     assert(column_index < table_desc->columns_num);
 
     column_desc = &table_desc->columns[column_index];
-    
+
     switch(column_desc->type)
     {
         case SORM_TYPE_INT :
@@ -996,9 +995,9 @@ static inline int _construct_filter_stmt(
 }
 
 void sorm_set_allocator(void *memory_pool, 
-    void*(*_alloc)(void *memory_pool, size_t size), 
-    void(*_free)(void *memory_pool, void *point), 
-    char*(*_strdup)(void *memory_pool, const char *string))
+        void*(*_alloc)(void *memory_pool, size_t size), 
+        void(*_free)(void *memory_pool, void *point), 
+        char*(*_strdup)(void *memory_pool, const char *string))
 {
     mem_set_allocator(memory_pool, _alloc, _free, _strdup);
 }
@@ -1028,7 +1027,7 @@ void sorm_final()
 
 int sorm_open(
         const char *path, sorm_db_t db, int sem_key, int flags,
-	sorm_connection_t **connection)
+        sorm_connection_t **connection)
 {
     sorm_connection_t *_connection = NULL;
     int ret, ret_val;
@@ -1071,46 +1070,46 @@ int sorm_open(
 
     if((flags & SORM_ENABLE_FOREIGN_KEY) == SORM_ENABLE_FOREIGN_KEY)
     {
-	ret = _sqlite3_prepare(_connection, "PRAGMA foreign_keys = ON", 
-		&stmt_handle);
+        ret = _sqlite3_prepare(_connection, "PRAGMA foreign_keys = ON", 
+                &stmt_handle);
 
-	if(ret != SQLITE_OK)
-	{
-	    log_debug("sqlite3_prepare error : %s", 
-		    sqlite3_errmsg(_connection->sqlite3_handle));
-	    return SORM_DB_ERROR;
-	}
+        if(ret != SQLITE_OK)
+        {
+            log_debug("sqlite3_prepare error : %s", 
+                    sqlite3_errmsg(_connection->sqlite3_handle));
+            return SORM_DB_ERROR;
+        }
 
-	ret = _sqlite3_step(_connection, stmt_handle);
+        ret = _sqlite3_step(_connection, stmt_handle);
 
-	if(ret != SQLITE_DONE)
-	{
-	    log_debug("sqlite3_step error : %s", 
-		    sqlite3_errmsg(_connection->sqlite3_handle));
-	    ret_val = SORM_DB_ERROR;
-	}else
-	{
-	    ret_val = SORM_OK;
-	}
-	ret = sqlite3_finalize(stmt_handle);
-	if(ret != SQLITE_OK)
-	{
-	    log_debug("sqlite3_finalize error : %s", 
-		    sqlite3_errmsg(_connection->sqlite3_handle));
-	    return SORM_DB_ERROR;
-	}
-	if(ret_val != SORM_OK)
-	{
-	    return ret_val;
-	}
+        if(ret != SQLITE_DONE)
+        {
+            log_debug("sqlite3_step error : %s", 
+                    sqlite3_errmsg(_connection->sqlite3_handle));
+            ret_val = SORM_DB_ERROR;
+        }else
+        {
+            ret_val = SORM_OK;
+        }
+        ret = sqlite3_finalize(stmt_handle);
+        if(ret != SQLITE_OK)
+        {
+            log_debug("sqlite3_finalize error : %s", 
+                    sqlite3_errmsg(_connection->sqlite3_handle));
+            return SORM_DB_ERROR;
+        }
+        if(ret_val != SORM_OK)
+        {
+            return ret_val;
+        }
     }
 
     if((flags & SORM_ENABLE_SEMAPHORE) == SORM_ENABLE_SEMAPHORE)
     {
-	_connection->sem_key = sem_key;
+        _connection->sem_key = sem_key;
     }
     _connection->flags = flags;
-    
+
     *connection = _connection;
 
     return SORM_OK;
@@ -1151,7 +1150,7 @@ int sorm_create_table(
 
     for(i = 0; i < table_desc->columns_num; i ++)
     {
-	column_desc = &(table_desc->columns[i]);
+        column_desc = &(table_desc->columns[i]);
         ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
                 " %s %s", column_desc->name, 
                 sorm_type_db_str[column_desc->type]);
@@ -1200,47 +1199,47 @@ int sorm_create_table(
     /* foreign key */
     if((SORM_ENABLE_FOREIGN_KEY & conn->flags) == SORM_ENABLE_FOREIGN_KEY)
     {
-	for(i = 0; i < table_desc->columns_num; i ++)
-	{
-	    column_desc = &(table_desc->columns[i]);
-	    if(column_desc->is_foreign_key)
-	    {
-		ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
-			" FOREIGN KEY(%s) REFERENCES %s(%s),",
-			column_desc->name, column_desc->foreign_table_name, 
-			column_desc->foreign_column_name);
-		offset += ret;
-		if(ret < 0 || offset > SQL_STMT_MAX_LEN)
-		{
-		    log_debug("snprintf error while constructing sql "
-			    "statment, snprintf length(%d) > max length(%d)", 
-			    offset, SQL_STMT_MAX_LEN);
-		    return SORM_TOO_LONG;
-		}
-	    }
-	}
+        for(i = 0; i < table_desc->columns_num; i ++)
+        {
+            column_desc = &(table_desc->columns[i]);
+            if(column_desc->is_foreign_key)
+            {
+                ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
+                        " FOREIGN KEY(%s) REFERENCES %s(%s),",
+                        column_desc->name, column_desc->foreign_table_name, 
+                        column_desc->foreign_column_name);
+                offset += ret;
+                if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+                {
+                    log_debug("snprintf error while constructing sql "
+                            "statment, snprintf length(%d) > max length(%d)", 
+                            offset, SQL_STMT_MAX_LEN);
+                    return SORM_TOO_LONG;
+                }
+            }
+        }
     }
 
     sql_stmt[offset - 1] = ')';
-    
+
     for(i = 0; i < table_desc->columns_num; i ++)
     {
-	column_desc = &(table_desc->columns[i]);
-	if(column_desc->is_foreign_key)
-	{
-	    ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
-		    "; CREATE INDEX %s_index ON %s(%s)",
-		    column_desc->name, table_desc->name, 
-		    column_desc->name);
-	    offset += ret;
-	    if(ret < 0 || offset > SQL_STMT_MAX_LEN)
-	    {
-		log_debug("snprintf error while constructing sql "
-			"statment, snprintf length(%d) > max length(%d)", 
-			offset, SQL_STMT_MAX_LEN);
-		return SORM_TOO_LONG;
-	    }
-	}
+        column_desc = &(table_desc->columns[i]);
+        if(column_desc->is_foreign_key)
+        {
+            ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
+                    "; CREATE INDEX %s_index ON %s(%s)",
+                    column_desc->name, table_desc->name, 
+                    column_desc->name);
+            offset += ret;
+            if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+            {
+                log_debug("snprintf error while constructing sql "
+                        "statment, snprintf length(%d) > max length(%d)", 
+                        offset, SQL_STMT_MAX_LEN);
+                return SORM_TOO_LONG;
+            }
+        }
     }
 
     log_debug("prepare stmt : %s", sql_stmt);
@@ -1287,7 +1286,7 @@ int sorm_delete_table(
     int offset;
     int ret, ret_val;
     int i;
-    
+
     if(conn == NULL)
     {
         log_error("Param conn is NULL.");
@@ -1568,7 +1567,7 @@ int sorm_save(
                 "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
         return SORM_TOO_LONG;
     }
-    
+
     for(i = 0; i < table_desc->columns_num; i ++)
     {
         if(sorm_is_stat_valued(_get_column_stat(table_desc, i)))
@@ -1586,7 +1585,7 @@ int sorm_save(
         }
     }
     sql_stmt[offset - 1] = ')';
-    
+
     ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1, 
             " VALUES (", table_desc->name);
     offset += ret;
@@ -1616,7 +1615,7 @@ int sorm_save(
     sql_stmt[offset - 1] = ')';
 
     log_debug("prepare stmt : %s", sql_stmt);
-    
+
     ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
 
     if(ret != SQLITE_OK)
@@ -1789,7 +1788,7 @@ DB_FINALIZE :
         return SORM_DB_ERROR;
 
     }
-    
+
     //if(ret_val == SORM_OK)
     //{
     //    for(i = 0; i < table_desc->columns_num; i ++)
@@ -2128,7 +2127,7 @@ int _select_some_array_core(
     int i;
 
     memset(rows_of_tables, 0, sizeof(void*) * tables_num);
-    
+
     /* if max_rows_num, the sorm new_array will return NULL, then the function 
      * will return SORM_NOMEM, but in this case ,the function need to return 
      * SORM_OK, so we return here*/
@@ -2138,7 +2137,7 @@ int _select_some_array_core(
         *rows_num = 0;
         return SORM_OK;
     }
-    
+
     for(i = 0; i < tables_num; i ++)
     {
         if((select_columns_of_tables[i].columns_num != 0) && 
@@ -2619,7 +2618,7 @@ int sorm_select_some_list_by_join(
 
     tables_column_name[0] = table1_column_name;
     tables_column_name[1] = table2_column_name;
-    
+
     is_tables_select[0] = (table1_rows_head == NULL) ? 0 : 1;
     is_tables_select[1] = (table2_rows_head == NULL) ? 0 : 1;
 
@@ -2688,7 +2687,7 @@ int sorm_select_all_array_by_join(
         }
         _list_cpy_free(table1_desc, table1_row_head, *rows_num, 
                 _table1_rows, usr_free);
-    
+
         *table1_rows = _table1_rows;
     }
     if((table2_rows != NULL) && (table2_row_head != NULL))
@@ -2727,7 +2726,7 @@ int sorm_select_all_list_by_join(
 
     tables_column_name[0] = table1_column_name;
     tables_column_name[1] = table2_column_name;
-    
+
     is_tables_select[0] = (table1_rows_head == NULL) ? 0 : 1;
     is_tables_select[1] = (table2_rows_head == NULL) ? 0 : 1;
 
@@ -2765,10 +2764,10 @@ int sorm_begin_transaction(sorm_connection_t *conn)
 
     if(conn->transaction_num == 0) /* first transaction */
     {
-	if(sorm_semaphore_enabled(conn->flags) == 1)
-	{
-	    sem_p(conn->sem_key);
-	}
+        if(sorm_semaphore_enabled(conn->flags) == 1)
+        {
+            sem_p(conn->sem_key);
+        }
         if(conn->begin_trans_stmt == NULL)
         {
             ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1, 
@@ -2874,10 +2873,10 @@ int sorm_commit_transaction(sorm_connection_t *conn)
         }
 
         ret = sqlite3_step(stmt_handle);
-	if(sorm_semaphore_enabled(conn->flags) == 1)
-	{
-	    sem_v(conn->sem_key);
-	}
+        if(sorm_semaphore_enabled(conn->flags) == 1)
+        {
+            sem_v(conn->sem_key);
+        }
 
         if(ret != SQLITE_DONE)
         {
@@ -2945,10 +2944,10 @@ int sorm_rollback_transaction(sorm_connection_t *conn)
         }
 
         ret = sqlite3_step(stmt_handle);
-	if(sorm_semaphore_enabled(conn->flags) == 1)
-	{
-	    sem_v(conn->sem_key);
-	}
+        if(sorm_semaphore_enabled(conn->flags) == 1)
+        {
+            sem_v(conn->sem_key);
+        }
 
         if(ret != SQLITE_DONE)
         {
@@ -2956,7 +2955,7 @@ int sorm_rollback_transaction(sorm_connection_t *conn)
                     sqlite3_errmsg(conn->sqlite3_handle));
             ret_val = SORM_DB_ERROR;
         }
-    
+
         ret_val = SORM_OK;
 
 DB_FINALIZE :
@@ -3034,48 +3033,48 @@ int sorm_close(sorm_connection_t *conn)
     }
 
     usr_free(conn);
-    
+
     //log_debug("Success return");
     return SORM_OK;
 }
 
 static inline void _construct_index_suffix(
-	char *index_suffix, char *columns_name)
+        char *index_suffix, char *columns_name)
 {
     assert(index_suffix != NULL);
     assert(columns_name != NULL);
-    
+
     char *index_suffix_iter, *columns_name_iter;
-    
+
     index_suffix_iter = index_suffix;
     columns_name_iter = columns_name;
-    
+
     while((*columns_name_iter) != '\0')
     {
-	if((*columns_name_iter) == COLUMN_NAMES_DELIMITER)
-	{
-	    (*index_suffix_iter) = '_';
-	    index_suffix_iter ++;
-	}else if((*columns_name_iter) != ' ')
-	{
-	    (*index_suffix_iter) = (*columns_name_iter);
-	    index_suffix_iter ++;
-	}
-	columns_name_iter ++;
+        if((*columns_name_iter) == COLUMN_NAMES_DELIMITER)
+        {
+            (*index_suffix_iter) = '_';
+            index_suffix_iter ++;
+        }else if((*columns_name_iter) != ' ')
+        {
+            (*index_suffix_iter) = (*columns_name_iter);
+            index_suffix_iter ++;
+        }
+        columns_name_iter ++;
     }
     (*index_suffix_iter) = '\0';
 }
 
 int sorm_create_index(
-	const sorm_connection_t *conn, 
-	sorm_table_descriptor_t *table_desc, char *columns_name)
+        const sorm_connection_t *conn, 
+        sorm_table_descriptor_t *table_desc, char *columns_name)
 {
     char sql_stmt[SQL_STMT_MAX_LEN + 1] = "";
     sqlite3_stmt *stmt_handle = NULL;
     int offset, columns_name_len;
     int ret, ret_val, i;
     char *index_suffix;
-    
+
     if(conn == NULL)
     {
         log_error("Param conn is NULL.");
@@ -3098,20 +3097,20 @@ int sorm_create_index(
     _construct_index_suffix(index_suffix, columns_name);
 
     ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1,
-	    "CREATE INDEX index_%s ON %s(%s)", 
-	    index_suffix, table_desc->name, columns_name);
+            "CREATE INDEX index_%s ON %s(%s)", 
+            index_suffix, table_desc->name, columns_name);
 
     sys_free(index_suffix);
-    
+
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
         log_error("snprintf error while constructing sql statment, "
                 "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
         return SORM_TOO_LONG;
     }
-    
+
     log_debug("prepare stmt : %s", sql_stmt);
-    
+
     ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
 
     if(ret != SQLITE_OK)
@@ -3120,7 +3119,7 @@ int sorm_create_index(
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
-    
+
     ret = _sqlite3_step(conn, stmt_handle);
 
     if(ret != SQLITE_DONE)
@@ -3148,8 +3147,8 @@ DB_FINALIZE :
 }
 
 int sorm_drop_index(
-	const sorm_connection_t *conn,
-	char *columns_name)
+        const sorm_connection_t *conn,
+        char *columns_name)
 {
     char sql_stmt[SQL_STMT_MAX_LEN + 1] = "";
     sqlite3_stmt *stmt_handle = NULL;
@@ -3159,13 +3158,13 @@ int sorm_drop_index(
 
     if(conn == NULL)
     {
-	log_error("Param conn is NULL.");
-	return SORM_ARG_NULL;
+        log_error("Param conn is NULL.");
+        return SORM_ARG_NULL;
     }
     if(columns_name == NULL)
     {
-	log_error("Param columns_name is NULL.");
-	return SORM_ARG_NULL;
+        log_error("Param columns_name is NULL.");
+        return SORM_ARG_NULL;
     }
 
     /* construct the suffix for index name */
@@ -3174,19 +3173,19 @@ int sorm_drop_index(
     _construct_index_suffix(index_suffix, columns_name);
 
     ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1,
-	    "DROP INDEX index_%s", index_suffix);
+            "DROP INDEX index_%s", index_suffix);
 
     sys_free(index_suffix);
-    
+
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
         log_error("snprintf error while constructing sql statment, "
                 "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
         return SORM_TOO_LONG;
     }
-    
+
     log_debug("prepare stmt : %s", sql_stmt);
-    
+
     ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
 
     if(ret != SQLITE_OK)
@@ -3195,7 +3194,7 @@ int sorm_drop_index(
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
-    
+
     ret = _sqlite3_step(conn, stmt_handle);
 
     if(ret != SQLITE_DONE)
@@ -3220,5 +3219,5 @@ DB_FINALIZE :
 
     }
     return ret_val;
-    
+
 }

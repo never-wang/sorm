@@ -9,8 +9,7 @@
  *       Compiler:  gcc
  *
  *         Author:  Wang Wencan 
- *	    Email:  never.wencan@gmail.com
- *        Company:  HPC Tsinghua
+ *          Email:  never.wencan@gmail.com
  ***************************************************************************/
 #include <string.h>
 #include <errno.h>

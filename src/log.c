@@ -9,8 +9,7 @@
  *       Compiler:  gcc
  *
  *         Author:  Wang Wencan 
- *	    Email:  never.wencan@gmail.com
- *        Company:  
+ *          Email:  never.wencan@gmail.com
  ***************************************************************************/
 #include "log.h"
 

@@ -9,7 +9,7 @@
  *       Compiler:  gcc
  *
  *         Author:  Wang Wencan 
- *	    Email:  never.wencan@gmail.com
+ *       Email:  never.wencan@gmail.com
  ***************************************************************************/
 #include <stdio.h>
 #include <assert.h>
@@ -41,11 +41,11 @@ int main()
     }
 
     ret = sorm_open(DB_FILE, SORM_DB_SQLITE, SEM_KEY,
-	    SORM_ENABLE_SEMAPHORE, &conn);
+            SORM_ENABLE_SEMAPHORE, &conn);
 
     if(ret != SORM_OK)
     {
-	    return -1;
+        return -1;
     }
 
     device_create_table(conn);
@@ -57,12 +57,12 @@ int main()
     i = 0;
     while(1)
     {
-      device_set_id(device, i);
-      sprintf(buf, "%d", i);
-      device_set_uuid(device, buf);
-      device_save(conn, device);
+        device_set_id(device, i);
+        sprintf(buf, "%d", i);
+        device_set_uuid(device, buf);
+        device_save(conn, device);
 
-      i ++;
+        i ++;
     }
 
     device_free(device);
