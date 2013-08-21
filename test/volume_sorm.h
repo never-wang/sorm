@@ -11,6 +11,11 @@
 
 #define VOLUME_DESC volume_get_desc()
 
+#define volume_list_for_each(data, pos, head) \
+    sorm_list_data_for_each(data, volume_t, pos, head)
+#define volume_list_for_each_safe(data, pos, scratch, head) \
+    sorm_list_data_for_each_safe(data, volume_t, pos, scratch, head)
+
 typedef struct volume_s
 {
     sorm_table_descriptor_t table_desc;

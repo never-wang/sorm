@@ -394,9 +394,8 @@ static void test_device_select(void)
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == (amount / 2));
     i = 0;
-    sorm_list_for_each(list_head, select_device_list)
+    device_list_for_each(select_device, list_head, select_device_list)
     {
-        select_device = (device_t*)list_head->data;
         CU_ASSERT(select_device->id == i);
         sprintf(device->uuid,"uuid-%d", i);
         CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
@@ -422,9 +421,8 @@ static void test_device_select(void)
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 5);
     i = 0;
-    sorm_list_for_each(list_head, select_device_list)
+    device_list_for_each(select_device, list_head, select_device_list)
     {
-        select_device = (device_t*)list_head->data;
         CU_ASSERT(select_device->id == i);
         sprintf(device->uuid,"uuid-%d", i);
         CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
@@ -442,9 +440,8 @@ static void test_device_select(void)
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == amount);
     i = 0;
-    sorm_list_for_each(list_head, select_device_list)
+    device_list_for_each(select_device, list_head, select_device_list)
     {
-        select_device = (device_t*)list_head->data;
         CU_ASSERT(select_device->id == i);
         sprintf(device->uuid,"uuid-%d", i);
         CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
@@ -506,7 +503,7 @@ static void test_device_select(void)
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 5);
     i = 0;
-    sorm_list_for_each(list_head, select_device_list)
+    device_list_for_each(select_device, list_head, select_device_list)
     {
         select_device = (device_t*)list_head->data;
         CU_ASSERT(select_device->id == i);
@@ -527,7 +524,7 @@ static void test_device_select(void)
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == amount);
     i = 0;
-    sorm_list_for_each(list_head, select_device_list)
+    device_list_for_each(select_device, list_head, select_device_list)
     {
         select_device = (device_t*)list_head->data;
         CU_ASSERT(select_device->id == i);

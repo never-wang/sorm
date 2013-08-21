@@ -10,6 +10,11 @@
 
 #define DEVICE_DESC device_get_desc()
 
+#define device_list_for_each(data, pos, head) \
+    sorm_list_data_for_each(data, device_t, pos, head)
+#define device_list_for_each_safe(data, pos, scratch, head) \
+    sorm_list_data_for_each_safe(data, device_t, pos, scratch, head)
+
 typedef struct device_s
 {
     sorm_table_descriptor_t table_desc;

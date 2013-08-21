@@ -405,6 +405,14 @@ void header_generate(
     /* #define XXXX_DESC xxxx_get_desc() */
     fprintf(file, "#define %s_DESC %s_get_desc()\n\n", upper_table_name, 
             table_desc->name);
+    /* define for list iterate */
+    fprintf(file, "#define %s_list_for_each(data, pos, head) \\\n"
+            INDENT "sorm_list_data_for_each(data, %s_t, pos, head)\n"
+                  "#define %s_list_for_each_safe(data, pos, scratch, head) \\\n"
+            INDENT "sorm_list_data_for_each_safe(data, %s_t, pos, scratch,"
+                    " head)\n\n",
+            table_desc->name, table_desc->name, 
+            table_desc->name, table_desc->name);
 
     sys_free(upper_table_name);
 

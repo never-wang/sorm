@@ -11,6 +11,11 @@
 
 #define TEXT_BLOB_DESC text_blob_get_desc()
 
+#define text_blob_list_for_each(data, pos, head) \
+    sorm_list_data_for_each(data, text_blob_t, pos, head)
+#define text_blob_list_for_each_safe(data, pos, scratch, head) \
+    sorm_list_data_for_each_safe(data, text_blob_t, pos, scratch, head)
+
 typedef struct text_blob_s
 {
     sorm_table_descriptor_t table_desc;

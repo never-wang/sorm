@@ -485,9 +485,11 @@ void c_generate(
     {
         if(table_desc->columns[i].is_foreign_key == 1)
         {
-            foreign_table_name_len = strlen(table_desc->columns[i].foreign_table_name);
+            foreign_table_name_len = strlen(
+                    table_desc->columns[i].foreign_table_name);
             foreign_header_file_name = sys_malloc(foreign_table_name_len + 8);
-            sprintf(foreign_header_file_name, "%s_sorm.h", table_desc->columns[i].foreign_table_name);
+            sprintf(foreign_header_file_name, "%s_sorm.h", 
+                    table_desc->columns[i].foreign_table_name);
             fprintf(file, "#include \"%s\"\n", foreign_header_file_name);
             sys_free(foreign_header_file_name);
         }
