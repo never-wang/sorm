@@ -20,8 +20,8 @@ extern int yylval;
 "FOREIGN KEY"	    { return FOREIGN_KEY; }
 "REFERENCES"        { return REFERENCES; }
 "BLOB"		    { return BLOB; }
-[a-z_]+              { yylval = strdup(yytext); return NAME; }
-[0-9]+              { yylval = strdup(yytext); return NUMBER; }
+[a-z_]+              { yylval = (int)strdup(yytext); return NAME; }
+[0-9]+              { yylval = (int)strdup(yytext); return NUMBER; }
 %%
 
 int yywrap()

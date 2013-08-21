@@ -366,7 +366,7 @@ static inline int _sqlite3_column(
         case SORM_TYPE_BLOB :
             if(column_desc->mem == SORM_MEM_HEAP)
             {
-                blob_db = sqlite3_column_blob(stmt_handle, result_index);
+                blob_db = (void *)sqlite3_column_blob(stmt_handle, result_index);
                 blob_len = sqlite3_column_bytes(stmt_handle, result_index);
                 if(blob_len != 0)
                 {
@@ -1499,7 +1499,7 @@ int sorm_set_column_value(
         case SORM_TYPE_BLOB :
             if(column_desc->mem == SORM_MEM_HEAP)
             {
-                text = value;
+                text = (char *)value;
                 *(char **)((char*)table_desc + column_desc->offset) = text; 
                 _set_blob_len(table_desc, column_index, value_len);
             }else if(column_desc->mem == SORM_MEM_STACK)
