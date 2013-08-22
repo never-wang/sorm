@@ -95,7 +95,9 @@ void volume_free_array(volume_t *volume, int n)
 
 int volume_create_table(const sorm_connection_t *conn)
 {
-    return sorm_create_table(conn, &volume_table_descriptor);
+    char *sql_stmt = "CREATE TABLE IF NOT EXISTS volume(id INTEGER PRIMARY KEY, device_id INTEGER, uuid TEXT UNIQUE, drive TEXT, label TEXT, FOREIGN KEY(device_id) REFERENCES device(id))";
+
+    return sorm_run_stmt(conn, sql_stmt);
 }
 
 int volume_delete_table(const sorm_connection_t *conn)

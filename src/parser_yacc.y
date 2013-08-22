@@ -43,6 +43,7 @@ static sorm_list_t *sorm_list_entry = NULL;
 %token FOREIGN_KEY
 %token REFERENCES
 %token BLOB
+%token IGNORE
 
 %%
 
@@ -51,15 +52,19 @@ ROOT :
      ;
 
 statement:
-         CREATE TABLE NAME LEFT_BRACKET columns_def COMMA table_defs RIGHT_BRACKET 
+         CREATE TABLE ignores NAME LEFT_DASH columns_def COMMA table_defs RIGHT_DASH 
          { 
-           table_desc->name = $3; 
+           table_desc->name = $4; 
          }
-	 | CREATE TABLE NAME LEFT_BRACKET columns_def RIGHT_BRACKET 
+	 | CREATE TABLE ignores NAME LEFT_DASH columns_def RIGHT_DASH 
          { 
-           table_desc->name = $3; 
+           table_desc->name = $4; 
          }
          ;
+
+ignores : 
+        ignores IGNORE
+        | IGNORE
 
 columns_def :
             columns_def COMMA column_def
@@ -101,6 +106,12 @@ blob_type :
 	    ;
 
 column_constraint :
+           use_column_constraint
+           | ignores use_column_constraint
+           | use_column_constraint ignores
+           | ignores use_column_constraint ignores
+
+use_column_constraint :
                   PRIMARY_KEY
            { column_desc->constraint = SORM_CONSTRAINT_PK; }
            | PRIMARY_KEY ASC

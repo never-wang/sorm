@@ -22,6 +22,7 @@ extern int yylval;
 "BLOB"		    { return BLOB; }
 [a-z_]+              { yylval = (int)strdup(yytext); return NAME; }
 [0-9]+              { yylval = (int)strdup(yytext); return NUMBER; }
+[A-Z]+                  { return IGNORE; }
 %%
 
 int yywrap()

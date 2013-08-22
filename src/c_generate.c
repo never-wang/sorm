@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 
 #include "c_generate.h"
 #include "generate.h"
@@ -122,13 +123,59 @@ static void c_generate_func_free(
 }
 
 static void c_generate_func_create_table(
-        FILE *file, const sorm_table_descriptor_t *table_desc)
+        FILE *file, const sorm_table_descriptor_t *table_desc, char *in_file_name)
 {
+    FILE *in_file;
+    char sql_stmt[SQL_STMT_MAX_LEN + 1];
+    char *pos, *next_pos, *dst_pos;
+
+    in_file = fopen(in_file_name, "r");
+    if(in_file == NULL)
+    {
+        error("fopen file(%s) error : %s.", in_file_name, strerror(errno));
+        return;
+    }
+    
+    if(fgets(sql_stmt, SQL_STMT_MAX_LEN + 1, in_file) == NULL)
+    {
+        error("read from file(%s) error : %s.", in_file_name, strerror(errno));
+        return;
+    }
+
+    fclose(in_file);
+
+    /* process read sql_stmt to replace TEXT(length) with TEXT */
+    dst_pos = pos = sql_stmt;
+    while((next_pos = strstr(pos, "TEXT")) != NULL)
+    {
+
+        next_pos = strchr(next_pos, '(');
+        if(next_pos == NULL)
+        {
+            break;
+        }
+        if(pos != dst_pos)
+        {
+            memcpy(dst_pos, pos, next_pos - pos);
+        }
+        dst_pos += next_pos - pos;
+        pos = strchr(next_pos, ')') + 1;
+        assert(pos != NULL);
+    }
+    next_pos = strchr(pos, '\n');
+    assert(next_pos != NULL);
+    memcpy(dst_pos, pos, next_pos - pos);
+    *(dst_pos + (next_pos - pos)) = '\0';
+
     fprintf(file, "int %s_create_table(const sorm_connection_t *conn)\n{\n", 
             table_desc->name);
-    fprintf(file, INDENT "return sorm_create_table(conn, &%s_table_descriptor);\n",
+    fprintf(file, INDENT "char *sql_stmt = \"%s\";\n\n", sql_stmt);
+    fprintf(file, INDENT "return sorm_run_stmt(conn, sql_stmt);\n",
             table_desc->name);
     fprintf(file, "}\n\n");
+
+    return;
+
 }
 
 static void c_generate_func_delete_table(
@@ -460,7 +507,7 @@ static void c_generate_func_index(
 }
 
 void c_generate(
-        const sorm_table_descriptor_t *table_desc)
+        const sorm_table_descriptor_t *table_desc, char *in_file_name)
 {
     FILE *file;
     char *file_name, *header_file_name, *foreign_header_file_name;
@@ -501,7 +548,7 @@ void c_generate(
     c_generate_func_get_desc(file, table_desc);
     c_generate_func_new(file, table_desc);
     c_generate_func_free(file, table_desc);
-    c_generate_func_create_table(file, table_desc);
+    c_generate_func_create_table(file, table_desc, in_file_name);
     c_generate_func_delete_table(file, table_desc);
     c_generate_func_save(file, table_desc);
     c_generate_func_set_mem(file, table_desc);

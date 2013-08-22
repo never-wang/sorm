@@ -94,7 +94,9 @@ void text_blob_free_array(text_blob_t *text_blob, int n)
 
 int text_blob_create_table(const sorm_connection_t *conn)
 {
-    return sorm_create_table(conn, &text_blob_table_descriptor);
+    char *sql_stmt = "CREATE TABLE IF NOT EXISTS text_blob(id INTEGER PRIMARY KEY, text_heap TEXT, text_stack TEXT, blob_heap BLOB, blob_stack BLOB(31))";
+
+    return sorm_run_stmt(conn, sql_stmt);
 }
 
 int text_blob_delete_table(const sorm_connection_t *conn)

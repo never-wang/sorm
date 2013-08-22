@@ -82,7 +82,9 @@ void device_free_array(device_t *device, int n)
 
 int device_create_table(const sorm_connection_t *conn)
 {
-    return sorm_create_table(conn, &device_table_descriptor);
+    char *sql_stmt = "CREATE TABLE IF NOT EXISTS device(id INTEGER PRIMARY KEY, uuid TEXT COLLATE NOCASE UNIQUE, name TEXT, password TEXT)";
+
+    return sorm_run_stmt(conn, sql_stmt);
 }
 
 int device_delete_table(const sorm_connection_t *conn)

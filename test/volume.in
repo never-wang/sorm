@@ -1,1 +1,1 @@
-CREATE TABLE volume{id INTEGER PRIMARY KEY, device_id INTEGER, uuid TEXT(31) UNIQUE, drive TEXT(15), label TEXT(31), FOREIGN KEY(device_id) REFERENCES device(id)}
+CREATE TABLE IF NOT EXISTS volume(id INTEGER PRIMARY KEY, device_id INTEGER, uuid TEXT(31) UNIQUE, drive TEXT(15), label TEXT(31), FOREIGN KEY(device_id) REFERENCES device(id))

@@ -1118,6 +1118,47 @@ int sorm_open(
     //log_debug("Success return");
 }
 
+int sorm_run_stmt(
+        const sorm_connection_t *conn, char *sql_stmt)
+{
+    sqlite3_stmt *stmt_handle = NULL;
+    int ret, ret_val;
+    
+    log_debug("prepare stmt : %s", sql_stmt);
+    ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
+
+    if(ret != SQLITE_OK)
+    {
+        log_debug("sqlite3_prepare error : %s", 
+                sqlite3_errmsg(conn->sqlite3_handle));
+        return SORM_DB_ERROR;
+    }
+
+    ret = _sqlite3_step(conn, stmt_handle);
+
+    if(ret != SQLITE_DONE)
+    {
+        log_debug("sqlite3_step error : %s", 
+                sqlite3_errmsg(conn->sqlite3_handle));
+        ret_val = SORM_DB_ERROR;
+        goto DB_FINALIZE;
+    }
+
+    //log_debug("Success return");
+    ret_val = SORM_OK;
+
+DB_FINALIZE :
+    ret = sqlite3_finalize(stmt_handle);
+    if(ret != SQLITE_OK)
+    {
+        log_debug("sqlite3_finalize error : %s", 
+                sqlite3_errmsg(conn->sqlite3_handle));
+        return SORM_DB_ERROR;
+    }
+
+    return ret_val;
+}
+
 int sorm_create_table(
         const sorm_connection_t *conn, const sorm_table_descriptor_t *table_desc)
 {

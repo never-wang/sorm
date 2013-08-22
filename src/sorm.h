@@ -349,6 +349,16 @@ int sorm_open(
 int sorm_close(sorm_connection_t *conn);
 
 /**
+ * @brief: run a user define database statement
+ *
+ * @param conn: pointer to the database connection
+ * @param sql_stmt: pointer to the user defined database statement
+ *
+ * @return: error code
+ */
+int sorm_run_stmt(
+        const sorm_connection_t *conn, char *sql_stmt);
+/**
  * @brief: create a table in a database according the table's descriptor
  *
  * @param conn: pointer to the database connection

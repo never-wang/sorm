@@ -96,7 +96,7 @@ int main(int argc, char **argv)
         assert(table_desc != NULL);
 
         header_generate(table_desc);
-        c_generate(table_desc);
+        c_generate(table_desc, argv[argv_index]);
         sys_free(table_desc->columns);
         sys_free(table_desc);
     }

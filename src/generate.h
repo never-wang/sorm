@@ -19,6 +19,7 @@
 extern sorm_table_descriptor_t *table_desc;
 extern sorm_list_t *columns_list_head;
 extern sorm_column_descriptor_t *column_desc;
+extern char sql_stmt[];
 
 #define INDENT "    "
 #define INDENT_TWICE INDENT INDENT
