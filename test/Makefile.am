@@ -5,9 +5,8 @@ test_sorm_SOURCES = framework.c test_sorm.c test_sorm.h device_sorm.c device_sor
 test_sorm_LDADD = $(SRC_DIR)/libsorm.la -ldl -lcunit
 test_sorm_CFLAGS = -I$(ZLOG_DIR) -I$(SRC_DIR)
 
-device_sorm.h device_sorm.c volume_sorm.c volume_sorm.h text_blob_sorm.c text_blob_sorm.h : \
-	$(SRC_DIR)/sorm_generate
-	./gen.sh
+%_sorm.c %_sorm.h : %.in $(SRC_DIR)/sorm_generate
+	$(SRC_DIR)/sorm_generate $<
 
 test_sem_SOURCES = test_sem.c test_sem.h device_sorm.c device_sorm.h
 test_sem_LDADD = $(SRC_DIR)/libsorm.la -ldl -lcunit

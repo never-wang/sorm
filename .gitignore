@@ -31,5 +31,9 @@ test/sorm.db
 test/test_sem
 test/test_sorm
 ylwrap
-
-
+test/device_sorm.c
+test/device_sorm.h
+test/text_blob_sorm.c
+test/text_blob_sorm.h
+test/volume_sorm.c
+test/volume_sorm.h
