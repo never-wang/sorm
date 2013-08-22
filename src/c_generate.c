@@ -127,7 +127,6 @@ static void c_generate_func_create_table(
 {
     FILE *in_file;
     char sql_stmt[SQL_STMT_MAX_LEN + 1];
-    char *pos, *next_pos, *dst_pos;
 
     in_file = fopen(in_file_name, "r");
     if(in_file == NULL)
@@ -144,28 +143,7 @@ static void c_generate_func_create_table(
 
     fclose(in_file);
 
-    /* process read sql_stmt to replace TEXT(length) with TEXT */
-    dst_pos = pos = sql_stmt;
-    while((next_pos = strstr(pos, "TEXT")) != NULL)
-    {
-
-        next_pos = strchr(next_pos, '(');
-        if(next_pos == NULL)
-        {
-            break;
-        }
-        if(pos != dst_pos)
-        {
-            memcpy(dst_pos, pos, next_pos - pos);
-        }
-        dst_pos += next_pos - pos;
-        pos = strchr(next_pos, ')') + 1;
-        assert(pos != NULL);
-    }
-    next_pos = strchr(pos, '\n');
-    assert(next_pos != NULL);
-    memcpy(dst_pos, pos, next_pos - pos);
-    *(dst_pos + (next_pos - pos)) = '\0';
+    sql_stmt[strlen(sql_stmt) - 1] = '\0';
 
     fprintf(file, "int %s_create_table(const sorm_connection_t *conn)\n{\n", 
             table_desc->name);

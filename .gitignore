@@ -37,3 +37,4 @@ test/text_blob_sorm.c
 test/text_blob_sorm.h
 test/volume_sorm.c
 test/volume_sorm.h
+*.db
