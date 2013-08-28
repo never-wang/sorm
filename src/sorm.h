@@ -127,6 +127,10 @@ typedef enum
     /* Invalid sorm_type_t*/
     SORM_ARG_NULL,
     /* Input argument is NULL */
+    SORM_COLUMNS_NAME_EMPTY,
+    /* Param columns_name when calling select function is an empty string */
+    SORM_FILTER_EMPTY,
+    /* Param filter when calling select function is an empty string */
     SORM_INIT_FAIL, /* sorm intialize fail */
 } sorm_error_t;
 
@@ -245,7 +249,11 @@ static const char* sorm_errorstr[] =
     "Invalid sorm_mem",            /* 8 - SORM_INVALID_MEM */
     "Invalid sorm_type",        /* 9 - SORM_INVALID_TYPE */
     "One or more arguments is NULL",    /* 10 - SORM_ARG_NULL */
-    "Sorm intialize fail",    /* 11 - SORM_INIT_FAIL / */
+    "Param columns_name when calling select function is an empty string", 
+    /* 11 - SORM_COLUMNS_NAME_EMPTY */
+    "Param filter when calling select function is an empty string", 
+    /* 12 - SORM_FILTER_EMPTY */
+    "Sorm intialize fail",    /* 13 - SORM_INIT_FAIL / */
 };
 
 static inline const char* sorm_strerror(int error_code)

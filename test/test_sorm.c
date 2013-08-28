@@ -113,6 +113,8 @@ static void test_device_new(void)
     device = device_new();
 
     CU_ASSERT(device != NULL);
+
+    device_free(device);
 }
 
 /* save, select and delete */
@@ -121,7 +123,12 @@ static void test_device_ssd(void)
     int ret;
     device_t *get_device;
     device_t *to_del_device;
+    int n;
 
+    //save a unset device
+    device = device_new();
+    ret = device_save(conn, device);
+    CU_ASSERT(ret == SORM_OK);
 
     device_set_id(device, 1);
     device_set_uuid(device, "123456");
@@ -169,6 +176,21 @@ static void test_device_ssd(void)
 
     ret = device_select_by_id(conn, ALL_COLUMNS, 1, &get_device);
     CU_ASSERT(ret == SORM_NOEXIST);
+    CU_ASSERT(get_device == NULL);
+
+    //delete a unset device
+    to_del_device = device_new();
+    ret = device_delete(conn, to_del_device);
+    CU_ASSERT(ret == SORM_OK);
+    device_free(to_del_device);
+    
+    ret = device_select_by_id(conn, "", 1, &get_device);
+    CU_ASSERT(ret == SORM_COLUMNS_NAME_EMPTY);
+    CU_ASSERT(get_device == NULL);
+    
+    ret = device_select_all_array_by(conn, "*", "", &n, &get_device);
+    printf("*******************%d\n", n);
+    CU_ASSERT(ret == SORM_FILTER_EMPTY);
     CU_ASSERT(get_device == NULL);
 }
 

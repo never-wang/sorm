@@ -1569,6 +1569,26 @@ int sorm_set_column_value(
 
     return SORM_OK;
 }
+
+/**
+ * @brief: used to check the case of all members do not have value
+ */
+static inline int _check_has_value(sorm_table_descriptor_t *table_desc)
+{
+    int has_value, i; 
+    has_value = 0;
+    for(i = 0; i < table_desc->columns_num; i ++)
+    {
+        has_value = has_value || 
+            sorm_is_stat_valued(_get_column_stat(table_desc, i));
+        if(has_value == 1)
+        {
+            break;
+        }
+    }
+    
+    return has_value;
+}
 /**
  * @brief: insert a new row or update a row in a table
  *
@@ -1597,6 +1617,13 @@ int sorm_save(
     {
         log_error("Param conn is NULL");
         return SORM_ARG_NULL;
+    }
+
+    ret = _check_has_value(table_desc);
+    if(ret == 0)
+    {
+        log_debug("No member has value in this object");
+        return SORM_OK;
     }
 
     /* sql statment : "UPDATE table_name "*/
@@ -1749,6 +1776,13 @@ int sorm_delete(
     {
         log_error("Param desc is NULL");
         return SORM_ARG_NULL;
+    }
+    
+    ret = _check_has_value(table_desc);
+    if(ret == 0)
+    {
+        log_debug("No member has value in this object");
+        return SORM_OK;
     }
 
     column_desc = table_desc->columns;
@@ -2017,10 +2051,20 @@ static int _select(
         log_debug("Param columns_name is NULL");
         return SORM_ARG_NULL;
     }
+    if(strlen(columns_name) == 0)
+    {
+        log_debug("Param columns_name is an empty string.");
+        return SORM_COLUMNS_NAME_EMPTY;
+    }
     if(rows_num == NULL)
     {
         log_debug("Param rows_num is NULL");
         return SORM_ARG_NULL;
+    }
+    if((filter != NULL) && strlen(filter) == 0)
+    {
+        log_debug("Param filter is an empty string.");
+        return SORM_FILTER_EMPTY;
     }
 
     select_columns_of_tables = sys_malloc(sizeof(select_columns_t) * tables_num);
