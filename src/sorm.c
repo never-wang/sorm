@@ -19,6 +19,7 @@
 #include "memory.h"
 #include "log.h"
 #include "semaphore.h"
+#include "generate.h"
 
 #define _list_cpy_free(desc, head, n, rows, free) \
     __list_cpy_free(desc, head, n, rows, (void*)(free))
@@ -1157,6 +1158,90 @@ DB_FINALIZE :
     }
 
     return ret_val;
+}
+
+int sorm_to_string(const sorm_table_descriptor_t *table_desc,
+        char *string, int len)
+{
+    int offset, ret, i;
+    sorm_column_descriptor_t *column_desc;
+    char *data;
+
+    offset = ret = snprintf(string, len, "%s\n{\n", table_desc->name);
+    if(ret < 0 || offset > (len - 1))
+    {
+        log_debug("snprintf error while constructing string for %s, "
+                "snprintf length(%d) > max length(%d)", table_desc->name,
+                offset, len - 1);
+        return SORM_STRING_BUF_NOT_ENOUGH;
+    }
+
+    for(i = 0; i < table_desc->columns_num; i ++)
+    {
+        column_desc = &(table_desc->columns[i]);
+        if(sorm_is_stat_valued(_get_column_stat(table_desc, i)))
+        {
+            switch(column_desc->type)
+            {
+                case SORM_TYPE_INT :
+                    ret = snprintf(string + offset, len - offset + 1, 
+                            INDENT"%s : %d;\n", column_desc->name, 
+                            *((int32_t*)((char*)table_desc + 
+                                    column_desc->offset)));
+                    break;
+                case SORM_TYPE_TEXT :
+                    switch(column_desc->mem)
+                    {
+                        case SORM_MEM_HEAP :
+                            data = *((char**)((char*)table_desc + 
+                                        column_desc->offset)); 
+                            break;
+                        case SORM_MEM_STACK :
+                            data = (char*)table_desc + column_desc->offset;
+                            break;
+                        default :
+                            log_error("unknow sorm mem : %d", column_desc->mem);
+                            return SORM_INVALID_MEM;
+                    }
+                    ret = snprintf(string + offset, len - offset + 1, 
+                            INDENT"%s : \"%s\";\n", 
+                            column_desc->name, data);
+                    break;
+                case SORM_TYPE_DOUBLE :
+                    ret = snprintf(string + offset, len - offset + 1, 
+                            INDENT"%s : %f;\n", column_desc->name,
+                            *((double*)((char*)table_desc + column_desc->offset)));
+                    break;
+                default :
+                    log_debug("unknow sorm type : %d", column_desc->type);
+                    return SORM_INVALID_TYPE;
+            }
+        }else
+        {
+            ret = snprintf(string + offset, len - offset + 1, 
+                    INDENT"%s : null;\n", column_desc->name);
+        }
+        offset += ret;
+        if(ret < 0 || offset > (len - 1))
+        {
+            log_debug("snprintf error while constructing string for %s, "
+                    "snprintf length(%d) > max length(%d)", table_desc->name,
+                    offset, len - 1);
+            return SORM_STRING_BUF_NOT_ENOUGH;
+        }
+    }
+
+    ret = snprintf(string + offset, len - offset + 1, "}");
+    offset += ret;
+    if(ret < 0 || offset > (len - 1))
+    {
+        log_debug("snprintf error while constructing string for %s, "
+                "snprintf length(%d) > max length(%d)", table_desc->name,
+                offset, len - 1);
+        return SORM_STRING_BUF_NOT_ENOUGH;
+    }
+
+    return SORM_OK;
 }
 
 int sorm_create_table(

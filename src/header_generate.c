@@ -171,6 +171,14 @@ static void header_generate_struct(
     fprintf(file, "} %s_t;\n\n", table_desc->name);
 }
 
+static void header_generate_func_to_string(
+        FILE *file, const sorm_table_descriptor_t* table_desc)
+{
+    fprintf(file, "int %s_to_string(\n"
+            INDENT_TWICE "%s_t *%s, char *string, int len);\n\n", 
+            table_desc->name, table_desc->name, table_desc->name);
+}
+
 static void header_generate_func_get_desc(
         FILE *file, const sorm_table_descriptor_t* table_desc)
 {
@@ -320,27 +328,29 @@ static void header_generate_func_select(
             {
                 case SORM_TYPE_INT :
                     fprintf(file, "int %s_select_by_%s(\n"
-                            INDENT "const sorm_connection_t *conn,\n"
-                            INDENT "const char *column_names, int %s,\n"
-                            INDENT "%s_t **%s);\n", table_desc->name, 
+                            INDENT_TWICE "const sorm_connection_t *conn,\n"
+                            INDENT_TWICE "const char *column_names, int %s,\n"
+                            INDENT_TWICE "%s_t **%s);\n", table_desc->name, 
                             table_desc->columns[i].name, 
                             table_desc->columns[i].name, 
                             table_desc->name, table_desc->name);
                     break;
                 case SORM_TYPE_TEXT :
                     fprintf(file, "int %s_select_by_%s(\n"
-                            INDENT "const sorm_connection_t *conn,\n"
-                            INDENT "const char *column_names, const char* %s,\n"
-                            INDENT "%s_t **%s);\n", table_desc->name, 
+                            INDENT_TWICE "const sorm_connection_t *conn,\n"
+                            INDENT_TWICE "const char *column_names, "
+                                         "const char* %s,\n"
+                            INDENT_TWICE "%s_t **%s);\n", table_desc->name, 
                             table_desc->columns[i].name, 
                             table_desc->columns[i].name, 
                             table_desc->name, table_desc->name);
                     break;
                 case SORM_TYPE_DOUBLE :
                     fprintf(file, "int %s_select_by_%s(\n"
-                            INDENT "const sorm_connection_t *conn,\n"
-                            INDENT "const char *column_names, double* %s,\n"
-                            INDENT "%s_t **%s);\n", table_desc->name, 
+                            INDENT_TWICE "const sorm_connection_t *conn,\n"
+                            INDENT_TWICE "const char *column_names, "
+                                         "double* %s,\n"
+                            INDENT_TWICE "%s_t **%s);\n", table_desc->name, 
                             table_desc->columns[i].name, 
                             table_desc->columns[i].name, 
                             table_desc->name, table_desc->name);
@@ -446,6 +456,7 @@ void header_generate(
     /* typedef struct xxxx_s */
     header_generate_struct(file, table_desc);
     /* functions */
+    header_generate_func_to_string(file, table_desc);
     header_generate_func_get_desc(file, table_desc);
     header_generate_func_new(file, table_desc);
     header_generate_func_free(file, table_desc);

@@ -132,6 +132,8 @@ typedef enum
     SORM_FILTER_EMPTY,
     /* Param filter when calling select function is an empty string */
     SORM_INIT_FAIL, /* sorm intialize fail */
+    SORM_STRING_BUF_NOT_ENOUGH, 
+    /* string buffer is not big enough when transfer a sorm object to string*/
 } sorm_error_t;
 
 /** @brief: join type */
@@ -254,6 +256,9 @@ static const char* sorm_errorstr[] =
     "Param filter when calling select function is an empty string", 
     /* 12 - SORM_FILTER_EMPTY */
     "Sorm intialize fail",    /* 13 - SORM_INIT_FAIL / */
+    "String buffer is not big enough when transfer a sorm object to string",
+    /* 14 - SORM_STRING_BUF_NOT_ENOUGH */
+    NULL
 };
 
 static inline const char* sorm_strerror(int error_code)

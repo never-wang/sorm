@@ -18,6 +18,7 @@
 #include <stdlib.h>
 
 #include "sorm.h"
+#include "generate.h"
 #include "volume_sorm.h"
 #include "device_sorm.h"
 #include "log.h"
@@ -189,7 +190,6 @@ static void test_device_ssd(void)
     CU_ASSERT(get_device == NULL);
     
     ret = device_select_all_array_by(conn, "*", "", &n, &get_device);
-    printf("*******************%d\n", n);
     CU_ASSERT(ret == SORM_FILTER_EMPTY);
     CU_ASSERT(get_device == NULL);
 }
@@ -2066,6 +2066,39 @@ static void test_PK(void)
     }
 }
 
+static void test_to_string(void)
+{
+    device_t *device;
+    char string[1024];
+    int ret;
+
+    device = device_new();
+    device_set_uuid(device, "uuid");
+
+    char *string1 = "device\n{\n"
+        INDENT"id : null;\n"
+        INDENT"uuid : \"uuid\";\n"
+        INDENT"name : null;\n"
+        INDENT"password : null;\n}";
+
+    ret = device_to_string(device, string, 1024);
+    CU_ASSERT(ret == SORM_OK)
+    CU_ASSERT(strcmp(string, string1) == 0);
+        
+    device_set_id(device, 1);
+    device_set_name(device, "name");
+    device_set_password(device, "password");
+    
+    char *string2 = "device\n{\n"
+        INDENT"id : 1;\n"
+        INDENT"uuid : \"uuid\";\n"
+        INDENT"name : \"name\";\n"
+        INDENT"password : \"password\";\n}";
+    ret = device_to_string(device, string, 1024);
+    CU_ASSERT(ret == SORM_OK)
+    CU_ASSERT(strcmp(string, string2) == 0);
+}
+
 static void test_text(void)
 {
     text_blob_t *text_blob, *select_text_blob;
@@ -2253,6 +2286,7 @@ static CU_TestInfo tests_device[] = {
     {"13.test_index", test_index},
     {"14.test_create_drop_conflict", test_create_drop_conflict},
     {"15.test_PK", test_PK}, 
+    {"16.test_to_string", test_to_string},
     CU_TEST_INFO_NULL,
 };
 

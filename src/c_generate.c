@@ -89,6 +89,17 @@ static void c_generate_device_desc(
     fprintf(file, "};\n\n");
 }
 
+static void c_generate_func_to_string(
+        FILE *file, const sorm_table_descriptor_t* table_desc)
+{
+    fprintf(file, "int %s_to_string(\n"
+            INDENT_TWICE "%s_t *%s, char *string, int len)\n{\n", 
+            table_desc->name, table_desc->name, table_desc->name);
+    fprintf(file, INDENT "return sorm_to_string((sorm_table_descriptor_t*)%s, "
+            "string, len);\n", table_desc->name);
+    fprintf(file, "}\n\n");
+}
+
 static void c_generate_func_get_desc(
         FILE *file, const sorm_table_descriptor_t* table_desc)
 {
@@ -523,6 +534,7 @@ void c_generate(
     c_generate_column_desc(file, table_desc);
     c_generate_device_desc(file, table_desc);
     /* functions */
+    c_generate_func_to_string(file, table_desc);
     c_generate_func_get_desc(file, table_desc);
     c_generate_func_new(file, table_desc);
     c_generate_func_free(file, table_desc);
