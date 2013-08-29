@@ -21,6 +21,66 @@
 #include "sorm.h"
 #include "memory.h"
 
+static void header_generate_define(
+        FILE *file, const sorm_table_descriptor_t *table_desc)
+{
+    int i, table_name_len;
+    char *upper_table_name, *upper_column_name;
+    
+    table_name_len = strlen(table_desc->name);
+    upper_table_name = sys_malloc(table_name_len + 1);
+    case_lower2upper(table_desc->name, upper_table_name);
+
+    fprintf(file, "#ifndef %s_SORM_H\n"
+            "#define %s_SORM_H\n\n", upper_table_name, upper_table_name);
+    fprintf(file, "#include \"sorm.h\"\n\n");
+
+    /* #define XX_XX_MAX_LEN XX */
+    for(i = 0; i < table_desc->columns_num; i ++)
+    {
+        upper_column_name = 
+            sys_malloc(strlen(table_desc->columns[i].name) + 1);
+        case_lower2upper(table_desc->columns[i].name, upper_column_name);
+        fprintf(file, "#define %s_%s_MAX_LEN %d\n", 
+                upper_table_name, upper_column_name, 
+                table_desc->columns[i].max_len);
+        free(upper_column_name);
+        upper_column_name = NULL;
+    }
+    fprintf(file, "\n");
+
+    /* #define NAME */
+
+    fprintf(file, "#define %s \"%s\"\n", upper_table_name, table_desc->name);
+    for(i = 0; i < table_desc->columns_num; i ++)
+    {
+        upper_column_name = 
+            sys_malloc(strlen(table_desc->columns[i].name) + 1);
+        case_lower2upper(table_desc->columns[i].name, upper_column_name);
+        fprintf(file, "#define %s_%s \"%s\"\n", 
+                upper_table_name, upper_column_name, 
+                table_desc->columns[i].name);
+        free(upper_column_name);
+        upper_column_name = NULL;
+    }
+    fprintf(file, "\n");
+
+    
+    /* #define XXXX_DESC xxxx_get_desc() */
+    fprintf(file, "#define %s_DESC %s_get_desc()\n\n", upper_table_name, 
+            table_desc->name);
+    /* define for list iterate */
+    fprintf(file, "#define %s_list_for_each(data, pos, head) \\\n"
+            INDENT "sorm_list_data_for_each(data, %s_t, pos, head)\n"
+                  "#define %s_list_for_each_safe(data, pos, scratch, head) \\\n"
+            INDENT "sorm_list_data_for_each_safe(data, %s_t, pos, scratch,"
+                    " head)\n\n",
+            table_desc->name, table_desc->name, 
+            table_desc->name, table_desc->name);
+    
+    sys_free(upper_table_name);
+}
+
 static void header_generate_struct(
         FILE *file, const sorm_table_descriptor_t* table_desc)
 {
@@ -382,41 +442,7 @@ void header_generate(
         return;
     }
 
-    upper_table_name = sys_malloc(table_name_len + 1);
-    case_lower2upper(table_desc->name, upper_table_name);
-
-    fprintf(file, "#ifndef %s_SORM_H\n"
-            "#define %s_SORM_H\n\n", upper_table_name, upper_table_name);
-    fprintf(file, "#include \"sorm.h\"\n\n");
-
-    /* #define XX_XX_MAX_LEN XX */
-    for(i = 0; i < table_desc->columns_num; i ++)
-    {
-        upper_column_name = 
-            sys_malloc(strlen(table_desc->columns[i].name) + 1);
-        case_lower2upper(table_desc->columns[i].name, upper_column_name);
-        fprintf(file, "#define %s_%s_MAX_LEN %d\n", 
-                upper_table_name, upper_column_name, 
-                table_desc->columns[i].max_len);
-        free(upper_column_name);
-        upper_column_name = NULL;
-    }
-    fprintf(file, "\n");
-
-    /* #define XXXX_DESC xxxx_get_desc() */
-    fprintf(file, "#define %s_DESC %s_get_desc()\n\n", upper_table_name, 
-            table_desc->name);
-    /* define for list iterate */
-    fprintf(file, "#define %s_list_for_each(data, pos, head) \\\n"
-            INDENT "sorm_list_data_for_each(data, %s_t, pos, head)\n"
-                  "#define %s_list_for_each_safe(data, pos, scratch, head) \\\n"
-            INDENT "sorm_list_data_for_each_safe(data, %s_t, pos, scratch,"
-                    " head)\n\n",
-            table_desc->name, table_desc->name, 
-            table_desc->name, table_desc->name);
-
-    sys_free(upper_table_name);
-
+    header_generate_define(file, table_desc);
     /* typedef struct xxxx_s */
     header_generate_struct(file, table_desc);
     /* functions */
