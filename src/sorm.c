@@ -34,7 +34,8 @@
 /** @brief: type to string which is used in sql statement */
 static const char* sorm_type_db_str[] = 
 {
-    "INTEGER",    /* 0 - SORM_TYPE_INT32 */
+    "INTEGER",    /* 0 - SORM_TYPE_INT */
+    "INTEGER",    /* 0 - SORM_TYPE_INT64 */
     "TEXT",       /* 1 - SORM_TYPE_TEXT */
     "REAL",       /* 2 - SORM_TYPE_DOUBLE */
     "BLOB",       /* 3 - SORM_TYPE_BLOB */
@@ -192,6 +193,10 @@ static int _sqlite3_column_bind(
             ret = sqlite3_bind_int(stmt_handle, bind_index, 
                     *((int32_t*)((char*)table_desc + column_desc->offset)));
             break;
+        case SORM_TYPE_INT64 :
+            ret = sqlite3_bind_int64(stmt_handle, bind_index, 
+                    *((int64_t*)((char*)table_desc + column_desc->offset)));
+            break;
             //TODO TEXT16
         case SORM_TYPE_TEXT :
             switch(column_desc->mem)
@@ -325,6 +330,9 @@ static inline int _sqlite3_column(
             *_type_member_pointer(table_desc, column_desc->offset, int32_t) =
                 sqlite3_column_int(stmt_handle, result_index);
             break;
+        case SORM_TYPE_INT64 :
+            *_type_member_pointer(table_desc, column_desc->offset, int64_t) =
+                sqlite3_column_int(stmt_handle, result_index);
             //TODO TEXT16
         case SORM_TYPE_TEXT :
             if(column_desc->mem == SORM_MEM_HEAP)
@@ -900,6 +908,10 @@ static inline int _construct_column_filter(
             offset = snprintf(filter, SQL_STMT_MAX_LEN + 1, "%s = %d", 
                     column_desc->name, *((int32_t*)column_value));
             break;
+        case SORM_TYPE_INT64 :
+            offset = snprintf(filter, SQL_STMT_MAX_LEN + 1, "%s = %lld", 
+                    column_desc->name, *((int64_t*)column_value));
+            break;
         case SORM_TYPE_TEXT :
             offset = snprintf(filter, SQL_STMT_MAX_LEN + 1, "%s = '%s'", 
                     column_desc->name, (char*)column_value);
@@ -1189,6 +1201,12 @@ int sorm_to_string(const sorm_table_descriptor_t *table_desc,
                             *((int32_t*)((char*)table_desc + 
                                     column_desc->offset)));
                     break;
+                case SORM_TYPE_INT64 :
+                    ret = snprintf(string + offset, len - offset + 1, 
+                            INDENT"%s : %lld;\n", column_desc->name, 
+                            *((int64_t*)((char*)table_desc + 
+                                    column_desc->offset)));
+                    break;
                 case SORM_TYPE_TEXT :
                     switch(column_desc->mem)
                     {
@@ -1210,7 +1228,13 @@ int sorm_to_string(const sorm_table_descriptor_t *table_desc,
                 case SORM_TYPE_DOUBLE :
                     ret = snprintf(string + offset, len - offset + 1, 
                             INDENT"%s : %f;\n", column_desc->name,
-                            *((double*)((char*)table_desc + column_desc->offset)));
+                            *((double*)((char*)table_desc + 
+                                    column_desc->offset)));
+                    break;
+                case SORM_TYPE_BLOB :
+                    ret = snprintf(string + offset, len - offset + 1,
+                            INDENT"%s : (%d);\n", column_desc->name,
+                            _get_blob_len(table_desc, i)); 
                     break;
                 default :
                     log_debug("unknow sorm type : %d", column_desc->type);
@@ -1593,6 +1617,10 @@ int sorm_set_column_value(
         case SORM_TYPE_INT :
             *((int32_t*)((char*)table_desc + column_desc->offset)) = 
                 *(int32_t*)value;
+            break;
+        case SORM_TYPE_INT64 :
+            *((int64_t*)((char*)table_desc + column_desc->offset)) = 
+                *(int64_t*)value;
             break;
             //TODO TEXT16
         case SORM_TYPE_TEXT :

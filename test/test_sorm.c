@@ -2070,6 +2070,7 @@ static void test_to_string(void)
 {
     device_t *device;
     char string[1024];
+    char string_short[4];
     int ret;
 
     device = device_new();
@@ -2097,6 +2098,8 @@ static void test_to_string(void)
     ret = device_to_string(device, string, 1024);
     CU_ASSERT(ret == SORM_OK)
     CU_ASSERT(strcmp(string, string2) == 0);
+    ret = device_to_string(device, string_short, 4);
+    CU_ASSERT(ret == SORM_STRING_BUF_NOT_ENOUGH);
 }
 
 static void test_text(void)
@@ -2270,6 +2273,31 @@ static void test_heap_select(void)
     sorm_list_free(list);
 }
 
+static void test_tb_to_string(void)
+{
+    text_blob_t *text_blob;
+    blob_t blob;
+    char string[1024];
+    int ret;
+
+    text_blob = text_blob_new();
+    text_blob_set_blob_heap(text_blob, &blob, sizeof(blob_t));
+    text_blob_set_blob_stack(text_blob, &blob, sizeof(blob_t));
+
+    char string1[1024];
+    sprintf(string1, "text_blob\n{\n"
+        INDENT"id : null;\n"
+        INDENT"text_heap : null;\n"
+        INDENT"text_stack : null;\n"
+        INDENT"blob_heap : (%d);\n"
+        INDENT"blob_stack : (%d);\n}", 
+        sizeof(blob_t), sizeof(blob_t));
+
+    ret = text_blob_to_string(text_blob, string, 1024);
+    CU_ASSERT(ret == SORM_OK)
+    CU_ASSERT(strcmp(string, string1) == 0);
+}
+
 static CU_TestInfo tests_device[] = {
     {"01.test_device_new", test_device_new},
     {"02.test_device_ssd", test_device_ssd},
@@ -2304,7 +2332,8 @@ static CU_TestInfo tests_sorm[] = {
 static CU_TestInfo tests_text_blob[] = {
     {"01.test_text", test_text},
     {"02.test_blob", test_blob}, 
-    {"03.test_heap_select", test_heap_select}, 
+    {"03.test_heap_select", test_heap_select},
+    {"04.test_to_string", test_tb_to_string},
     CU_TEST_INFO_NULL,
 };
 

@@ -149,7 +149,7 @@ typedef enum
 typedef enum
 {
     SORM_TYPE_INT    =   0,
-    //SORM_TYPE_INT64,
+    SORM_TYPE_INT64,
     SORM_TYPE_TEXT,
     SORM_TYPE_DOUBLE,
     SORM_TYPE_BLOB,    /* BLOB TYPE, for binary data */
@@ -285,6 +285,7 @@ static inline const char* sorm_strjoin(sorm_join_t join)
 static const char* sorm_typestr[] =
 {
     "SORM_TYPE_INT",
+    "SORM_TYPE_INT64",
     "SORM_TYPE_TEXT",
     "SORM_TYPE_DOUBLE",
     "SORM_TYPE_BLOB",
