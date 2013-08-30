@@ -12,6 +12,7 @@ extern int yylval;
 ","                 { return COMMA; }
 "TEXT"              { return TEXT; }
 "INTEGER"           { return INTEGER; }
+"BIGINT"            { return BIGINT; }
 "REAL"              { return REAL; }
 "PRIMARY KEY"       { return PRIMARY_KEY; }
 "ASC"               { return ASC; }

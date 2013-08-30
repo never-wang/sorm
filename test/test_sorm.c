@@ -246,8 +246,8 @@ static int _insert_long_row_into_device(int id, char *name)
 
     /* sql statment : "UPDATE table_name "*/
     snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1, 
-            "REPLACE INTO device VALUES (%d, '%s', 'too_long', '123')", 
-            id, name);
+            "REPLACE INTO device VALUES (%d, '%s', 'too_long', '123', "
+            "123, 123)", id, name);
 
     ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
             SQL_STMT_MAX_LEN, &stmt_handle, NULL);
@@ -2080,7 +2080,9 @@ static void test_to_string(void)
         INDENT"id : null;\n"
         INDENT"uuid : \"uuid\";\n"
         INDENT"name : null;\n"
-        INDENT"password : null;\n}";
+        INDENT"password : null;\n"
+        INDENT"small_num : null;\n"
+        INDENT"big_num : null;\n}";
 
     ret = device_to_string(device, string, 1024);
     CU_ASSERT(ret == SORM_OK)
@@ -2094,7 +2096,9 @@ static void test_to_string(void)
         INDENT"id : 1;\n"
         INDENT"uuid : \"uuid\";\n"
         INDENT"name : \"name\";\n"
-        INDENT"password : \"password\";\n}";
+        INDENT"password : \"password\";\n"
+        INDENT"small_num : null;\n"
+        INDENT"big_num : null;\n}";
     ret = device_to_string(device, string, 1024);
     CU_ASSERT(ret == SORM_OK)
     CU_ASSERT(strcmp(string, string2) == 0);
@@ -2151,6 +2155,45 @@ static void test_text(void)
     CU_ASSERT(ret == SORM_OK);
 
     text_blob_free(text_blob);
+}
+
+static void test_int64(void)
+{
+    device_t *device, *select_device;
+
+    device = device_new();
+
+#define SMALL_NUM 123456
+#define BIG_NUM 123456789012
+
+    device_set_small_num(device, SMALL_NUM);
+    device_set_big_num(device, BIG_NUM);
+
+    device_save(conn, device);
+    
+    CU_ASSERT(device->small_num == SMALL_NUM);
+    CU_ASSERT(device->big_num == BIG_NUM);
+
+    device_select_by_id(conn, "*", device->id, &select_device);
+    CU_ASSERT(device->small_num == select_device->small_num);
+    CU_ASSERT(device->big_num == select_device->big_num);
+
+    device_free(device);
+    device_free(select_device);
+    
+    device = device_new();
+    
+    device_set_small_num(device, BIG_NUM);
+
+    device_save(conn, device);
+    
+    CU_ASSERT(device->small_num != BIG_NUM);
+
+    device_select_by_id(conn, "*", device->id, &select_device);
+    CU_ASSERT(device->small_num == select_device->small_num);
+
+    device_free(device);
+    device_free(select_device);
 }
 
 static void test_blob(void)
@@ -2315,6 +2358,7 @@ static CU_TestInfo tests_device[] = {
     {"14.test_create_drop_conflict", test_create_drop_conflict},
     {"15.test_PK", test_PK}, 
     {"16.test_to_string", test_to_string},
+    {"17.test_int64", test_int64},
     CU_TEST_INFO_NULL,
 };
 

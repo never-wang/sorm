@@ -324,6 +324,14 @@ static inline int _sqlite3_column(
     //log_debug("Start.");
     column_desc = &table_desc->columns[column_index];
 
+    ret = sqlite3_column_type(stmt_handle, result_index);
+    if(ret == SQLITE_NULL)
+    {
+        log_debug("The value of column(%d) is a NULL value.");
+        _add_column_stat(table_desc, column_index, SORM_STAT_NULL);
+        return SORM_OK;
+    }
+
     switch(column_desc->type)
     {
         case SORM_TYPE_INT :
@@ -332,7 +340,8 @@ static inline int _sqlite3_column(
             break;
         case SORM_TYPE_INT64 :
             *_type_member_pointer(table_desc, column_desc->offset, int64_t) =
-                sqlite3_column_int(stmt_handle, result_index);
+                sqlite3_column_int64(stmt_handle, result_index);
+            break;
             //TODO TEXT16
         case SORM_TYPE_TEXT :
             if(column_desc->mem == SORM_MEM_HEAP)

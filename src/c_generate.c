@@ -205,6 +205,15 @@ static void c_generate_func_set_mem(
                         "(sorm_table_descriptor_t*)%s, %d, &%s, 0);\n",
                         table_desc->name, i, table_desc->columns[i].name);
                 break;
+            case SORM_TYPE_INT64 :
+                fprintf(file, "int %s_set_%s(%s_t *%s, int64_t %s)\n{\n", 
+                        table_desc->name, table_desc->columns[i].name, 
+                        table_desc->name, table_desc->name, 
+                        table_desc->columns[i].name);
+                fprintf(file, INDENT "return sorm_set_column_value("
+                        "(sorm_table_descriptor_t*)%s, %d, &%s, 0);\n",
+                        table_desc->name, i, table_desc->columns[i].name);
+                break;
             case SORM_TYPE_TEXT :
                 fprintf(file, "int %s_set_%s(%s_t *%s, const char* %s)\n{\n", 
                         table_desc->name, table_desc->columns[i].name, 
@@ -271,6 +280,16 @@ static void c_generate_func_delete(
                             "%d, (void *)&%s);\n",
                             table_desc->name, i, table_desc->columns[i].name);
                     break;
+                case SORM_TYPE_INT64 :
+                    fprintf(file, "int %s_delete_by_%s(const sorm_connection_t "
+                            "*conn, int64_t %s)\n{\n", table_desc->name, 
+                            table_desc->columns[i].name, 
+                            table_desc->columns[i].name);
+                    fprintf(file, INDENT "return sorm_delete_by_column(\n"
+                            INDENT_TRIPLE "conn, &%s_table_descriptor, "
+                            "%d, (void *)&%s);\n",
+                            table_desc->name, i, table_desc->columns[i].name);
+                    break;
                 case SORM_TYPE_TEXT :
                     fprintf(file, "int %s_delete_by_%s(const sorm_connection_t "
                             "*conn, char* %s)\n{\n", table_desc->name,
@@ -323,6 +342,22 @@ static void c_generate_func_select(
                     fprintf(file, "int %s_select_by_%s(\n"
                             INDENT_TWICE "const sorm_connection_t *conn,\n"
                             INDENT_TWICE "const char *column_names, int %s,\n"
+                            INDENT_TWICE "%s_t **%s)\n{\n", 
+                            table_desc->name, table_desc->columns[i].name, 
+                            table_desc->columns[i].name,
+                            table_desc->name, table_desc->name);
+                    fprintf(file, INDENT "return sorm_select_one_by_column(\n"
+                            INDENT_TRIPLE "conn, &%s_table_descriptor, "
+                            "column_names,\n"
+                            INDENT_TRIPLE "%d, (void *)&%s, "
+                            "(sorm_table_descriptor_t **)%s);\n", 
+                            table_desc->name, i, table_desc->columns[i].name, 
+                            table_desc->name);
+                    break;
+                case SORM_TYPE_INT64 :
+                    fprintf(file, "int %s_select_by_%s(\n"
+                            INDENT_TWICE "const sorm_connection_t *conn,\n"
+                            INDENT_TWICE "const char *column_names, int64_t %s,\n"
                             INDENT_TWICE "%s_t **%s)\n{\n", 
                             table_desc->name, table_desc->columns[i].name, 
                             table_desc->columns[i].name,
