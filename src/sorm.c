@@ -2235,9 +2235,8 @@ static int _select(
         }
         offset += (ret = snprintf(sql_stmt + offset, 
                     SQL_STMT_MAX_LEN + 1 - offset, 
-                    " %s %s ON %s.%s=%s.%s", join_str, tables_desc[1]->name, 
-                    tables_desc[0]->name, tables_column_name[0],
-                    tables_desc[1]->name, tables_column_name[1]));
+                    " %s %s ON %s=%s", join_str, tables_desc[1]->name, 
+                    tables_column_name[0], tables_column_name[1]));
         if(ret < 0 || offset > SQL_STMT_MAX_LEN)
         {
             log_debug("snprintf error while constructing filter, "

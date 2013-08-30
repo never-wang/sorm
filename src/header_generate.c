@@ -57,9 +57,9 @@ static void header_generate_define(
         upper_column_name = 
             sys_malloc(strlen(table_desc->columns[i].name) + 1);
         case_lower2upper(table_desc->columns[i].name, upper_column_name);
-        fprintf(file, "#define %s_%s \"%s\"\n", 
+        fprintf(file, "#define %s__%s \"%s.%s\"\n", 
                 upper_table_name, upper_column_name, 
-                table_desc->columns[i].name);
+                table_desc->name, table_desc->columns[i].name);
         free(upper_column_name);
         upper_column_name = NULL;
     }
