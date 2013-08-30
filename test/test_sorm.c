@@ -2078,13 +2078,9 @@ static void test_to_string(void)
     device = device_new();
     device_set_uuid(device, "uuid");
 
-    char *string1 = "device\n{\n"
-        INDENT"id : null;\n"
-        INDENT"uuid : \"uuid\";\n"
-        INDENT"name : null;\n"
-        INDENT"password : null;\n"
-        INDENT"small_num : null;\n"
-        INDENT"big_num : null;\n}";
+    char *string1 = "device { id(null); uuid(\"uuid\"); "
+        "name(null); password(null); small_num(null); "
+        "big_num(null); }";
 
     ret = device_to_string(device, string, 1024);
     CU_ASSERT(ret == SORM_OK)
@@ -2094,13 +2090,13 @@ static void test_to_string(void)
     device_set_name(device, "name");
     device_set_password(device, "password");
     
-    char *string2 = "device\n{\n"
-        INDENT"id : 1;\n"
-        INDENT"uuid : \"uuid\";\n"
-        INDENT"name : \"name\";\n"
-        INDENT"password : \"password\";\n"
-        INDENT"small_num : null;\n"
-        INDENT"big_num : null;\n}";
+    char *string2 = "device { "
+        "id(1); "
+        "uuid(\"uuid\"); "
+        "name(\"name\"); "
+        "password(\"password\"); "
+        "small_num(null); "
+        "big_num(null); }";
     ret = device_to_string(device, string, 1024);
     CU_ASSERT(ret == SORM_OK)
     CU_ASSERT(strcmp(string, string2) == 0);
@@ -2332,13 +2328,9 @@ static void test_tb_to_string(void)
     text_blob_set_blob_stack(text_blob, &blob, sizeof(blob_t));
 
     char string1[1024];
-    sprintf(string1, "text_blob\n{\n"
-        INDENT"id : null;\n"
-        INDENT"text_heap : null;\n"
-        INDENT"text_stack : null;\n"
-        INDENT"blob_heap : (%d);\n"
-        INDENT"blob_stack : (%d);\n}", 
-        sizeof(blob_t), sizeof(blob_t));
+    sprintf(string1, "text_blob { id(null); text_heap(null); "
+            "text_stack(null); blob_heap(%d); blob_stack(%d); }", 
+            sizeof(blob_t), sizeof(blob_t));
 
     ret = text_blob_to_string(text_blob, string, 1024);
     CU_ASSERT(ret == SORM_OK)

@@ -1188,7 +1188,7 @@ int sorm_to_string(const sorm_table_descriptor_t *table_desc,
     sorm_column_descriptor_t *column_desc;
     char *data;
 
-    offset = ret = snprintf(string, len, "%s\n{\n", table_desc->name);
+    offset = ret = snprintf(string, len, "%s { ", table_desc->name);
     if(ret < 0 || offset > (len - 1))
     {
         log_debug("snprintf error while constructing string for %s, "
@@ -1206,13 +1206,13 @@ int sorm_to_string(const sorm_table_descriptor_t *table_desc,
             {
                 case SORM_TYPE_INT :
                     ret = snprintf(string + offset, len - offset + 1, 
-                            INDENT"%s : %d;\n", column_desc->name, 
+                            "%s(%d); ", column_desc->name, 
                             *((int32_t*)((char*)table_desc + 
                                     column_desc->offset)));
                     break;
                 case SORM_TYPE_INT64 :
                     ret = snprintf(string + offset, len - offset + 1, 
-                            INDENT"%s : %lld;\n", column_desc->name, 
+                            "%s(%lld); ", column_desc->name, 
                             *((int64_t*)((char*)table_desc + 
                                     column_desc->offset)));
                     break;
@@ -1231,18 +1231,18 @@ int sorm_to_string(const sorm_table_descriptor_t *table_desc,
                             return SORM_INVALID_MEM;
                     }
                     ret = snprintf(string + offset, len - offset + 1, 
-                            INDENT"%s : \"%s\";\n", 
+                            "%s(\"%s\"); ", 
                             column_desc->name, data);
                     break;
                 case SORM_TYPE_DOUBLE :
                     ret = snprintf(string + offset, len - offset + 1, 
-                            INDENT"%s : %f;\n", column_desc->name,
+                            "%s(%f); ", column_desc->name,
                             *((double*)((char*)table_desc + 
                                     column_desc->offset)));
                     break;
                 case SORM_TYPE_BLOB :
                     ret = snprintf(string + offset, len - offset + 1,
-                            INDENT"%s : (%d);\n", column_desc->name,
+                            "%s(%d); ", column_desc->name,
                             _get_blob_len(table_desc, i)); 
                     break;
                 default :
@@ -1252,7 +1252,7 @@ int sorm_to_string(const sorm_table_descriptor_t *table_desc,
         }else
         {
             ret = snprintf(string + offset, len - offset + 1, 
-                    INDENT"%s : null;\n", column_desc->name);
+                    "%s(null); ", column_desc->name);
         }
         offset += ret;
         if(ret < 0 || offset > (len - 1))
