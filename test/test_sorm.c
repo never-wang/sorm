@@ -370,7 +370,7 @@ static void test_device_select(void)
 
     //printf("Start select half by select_some_array_by with filter\n");
     n = amount * 2;
-    sprintf(filter, DEVICE__ID" < %d", 5);
+    sprintf(filter, COLUMN__DEVICE__ID" < %d", 5);
     ret = device_select_some_array_by(conn, ALL_COLUMNS, filter, &n, &select_device);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 5);
@@ -438,7 +438,7 @@ static void test_device_select(void)
 
     //printf("Start select half by select_some_list_by with filter\n");
     n = amount * 2;
-    sprintf(filter, DEVICE__ID" < %d", 5);
+    sprintf(filter, COLUMN__DEVICE__ID" < %d", 5);
     ret = device_select_some_list_by(conn, ALL_COLUMNS, filter, &n, &select_device_list);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 5);
@@ -480,7 +480,7 @@ static void test_device_select(void)
     /*****************************/
     //printf("Start select half by select_all_array_by with filter\n");
     n = 0;
-    sprintf(filter, DEVICE__ID" < %d", 5);
+    sprintf(filter, COLUMN__DEVICE__ID" < %d", 5);
     ret = device_select_all_array_by(conn, ALL_COLUMNS, filter, &n, &select_device);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 5);
@@ -520,7 +520,7 @@ static void test_device_select(void)
     /*****************************/
     //printf("Start select half by select_all_list_by with filter\n");
     n = 0;
-    sprintf(filter, DEVICE__ID" < %d", 5);
+    sprintf(filter, COLUMN__DEVICE__ID" < %d", 5);
     ret = device_select_all_list_by(conn, ALL_COLUMNS, filter, &n, &select_device_list);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 5);
@@ -848,7 +848,7 @@ static void test_select_columns()
     }
 
     //printf("select uuid\n");
-    ret = device_select_all_array_by(conn, DEVICE__UUID, NULL, &n, &select_device);
+    ret = device_select_all_array_by(conn, COLUMN__DEVICE__UUID, NULL, &n, &select_device);
     CU_ASSERT(n == amount);
     for(i = 0; i < n; i ++)
     {
@@ -858,7 +858,7 @@ static void test_select_columns()
     device_free(select_device);
 
     //printf("select device.uuid\n");
-    ret = device_select_all_array_by(conn, DEVICE__UUID, NULL, &n, &select_device);
+    ret = device_select_all_array_by(conn, COLUMN__DEVICE__UUID, NULL, &n, &select_device);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == amount);
     for(i = 0; i < n; i ++)
@@ -869,7 +869,7 @@ static void test_select_columns()
     device_free(select_device);
 
     //printf("select device.uuid and id \n");
-    ret = device_select_all_array_by(conn, DEVICE__ID", "DEVICE__UUID, NULL, &n, &select_device);
+    ret = device_select_all_array_by(conn, COLUMN__DEVICE__ID", "COLUMN__DEVICE__UUID, NULL, &n, &select_device);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == amount);
     for(i = 0; i < n; i ++)
@@ -881,7 +881,7 @@ static void test_select_columns()
     device_free(select_device);
 
     //printf("select device.uuid and id \n");
-    ret = device_select_all_array_by(conn, DEVICE__ID", "DEVICE__UUID, NULL, &n, &select_device);
+    ret = device_select_all_array_by(conn, COLUMN__DEVICE__ID", "COLUMN__DEVICE__UUID, NULL, &n, &select_device);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == amount);
     for(i = 0; i < n; i ++)
@@ -893,7 +893,7 @@ static void test_select_columns()
     device_free(select_device);
 
     //printf("select * and id \n");
-    ret = device_select_all_array_by(conn, ALL_COLUMNS", "DEVICE__ID, NULL, &n, &select_device);
+    ret = device_select_all_array_by(conn, ALL_COLUMNS", "COLUMN__DEVICE__ID, NULL, &n, &select_device);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == amount);
     for(i = 0; i < n; i ++)
@@ -1112,8 +1112,8 @@ static void test_sorm_select_by_join()
     device = device_new();
     volume = volume_new();
     //printf("test inner join\n");
-    ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+    ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, (sorm_table_descriptor_t**)&select_volume);
     
     CU_ASSERT(ret == SORM_OK);
@@ -1141,8 +1141,8 @@ static void test_sorm_select_by_join()
     volume_free(select_volume);
 
     // //printf("test left join");
-    ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_LEFT_JOIN, NULL, &n,
+    ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_LEFT_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device,(sorm_table_descriptor_t**) &select_volume);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 6);
@@ -1173,8 +1173,8 @@ static void test_sorm_select_by_join()
 
     // //printf("select by fileter\n");
     ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, 
-            DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, DEVICE__ID" = 0",
+            DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, COLUMN__DEVICE__ID" = 0",
             &n, (sorm_table_descriptor_t**)&select_device, 
             (sorm_table_descriptor_t**)&select_volume);
 
@@ -1208,8 +1208,8 @@ static void test_sorm_select_by_join()
 
     // //printf("test select some by join\n");
     n = 3;
-    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, (sorm_table_descriptor_t**)&select_volume);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 3);
@@ -1235,8 +1235,8 @@ static void test_sorm_select_by_join()
     device_free(select_device);
     volume_free(select_volume);
     n = 4;
-    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, (sorm_table_descriptor_t**)&select_volume);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 4);
@@ -1266,8 +1266,8 @@ static void test_sorm_select_by_join()
     volume_free(volume);
 
     n = 0;
-    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, (sorm_table_descriptor_t**)&select_volume);
     CU_ASSERT(ret == SORM_NOEXIST);
     CU_ASSERT(n == 0);
@@ -1285,16 +1285,16 @@ static void test_sorm_select_by_join()
 
     /* select from empty table */
     n = 4;
-    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, (sorm_table_descriptor_t**)&select_volume);
     CU_ASSERT(ret == SORM_NOEXIST);
     CU_ASSERT(n == 0);
     CU_ASSERT(select_device == NULL);
     CU_ASSERT(select_volume == NULL);
 
-    ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+    ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, (sorm_table_descriptor_t**)&select_volume);
     CU_ASSERT(ret == SORM_NOEXIST);
     CU_ASSERT(n == 0);
@@ -1302,8 +1302,8 @@ static void test_sorm_select_by_join()
     CU_ASSERT(select_volume == NULL);
 
     sorm_list_t *list1, *list2;
-    ret = sorm_select_all_list_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+    ret = sorm_select_all_list_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             &list1, &list2);
     CU_ASSERT(ret == SORM_NOEXIST);
     CU_ASSERT(n == 0);
@@ -1365,8 +1365,8 @@ static void test_sorm_select_columns_by_join()
     //printf("select device.id and volume.id\n");
     ret = sorm_select_all_array_by_join(conn, 
             "device.id, volume.id"
-            , DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+            , DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, 
             (sorm_table_descriptor_t**)&select_volume);
 
@@ -1383,8 +1383,8 @@ static void test_sorm_select_columns_by_join()
     //printf("select * and volume.id\n");
     ret = sorm_select_all_array_by_join(conn, 
             "*, volume.id"
-            , DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+            , DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, 
             (sorm_table_descriptor_t**)&select_volume);
 
@@ -1414,8 +1414,8 @@ static void test_sorm_select_columns_by_join()
     //printf("select device.id and *\n");
     ret = sorm_select_all_array_by_join(conn, 
             "device.id, *"
-            , DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+            , DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, 
             (sorm_table_descriptor_t**)&select_volume);
 
@@ -1444,8 +1444,8 @@ static void test_sorm_select_columns_by_join()
 
     //printf("select id\n");
     ret = sorm_select_all_array_by_join(conn, 
-            "id", DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+            "id", DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, 
             (sorm_table_descriptor_t**)&select_volume);
 
@@ -1456,8 +1456,8 @@ static void test_sorm_select_columns_by_join()
     //printf("select drive\n");
     ret = sorm_select_all_array_by_join(conn, 
             "drive"
-            , DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+            , DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, 
             (sorm_table_descriptor_t**)&select_volume);
 
@@ -1473,8 +1473,8 @@ static void test_sorm_select_columns_by_join()
     //printf("select passwd\n");
     ret = sorm_select_all_array_by_join(conn, 
             "password"
-            , DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+            , DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, 
             (sorm_table_descriptor_t**)&select_volume);
 
@@ -1490,8 +1490,8 @@ static void test_sorm_select_columns_by_join()
     //printf("select drive, drive, passwd, drive\n");
     ret = sorm_select_all_array_by_join(conn, 
             "drive, drive, password, drive"
-            , DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+            , DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, 
             (sorm_table_descriptor_t**)&select_volume);
 
@@ -1510,8 +1510,8 @@ static void test_sorm_select_columns_by_join()
     //printf("select passwd, drive\n");
     ret = sorm_select_all_array_by_join(conn, 
             "password, drive"
-            , DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+            , DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, 
             (sorm_table_descriptor_t**)&select_volume);
 
@@ -1530,8 +1530,8 @@ static void test_sorm_select_columns_by_join()
     //printf("select drive, passwd\n");
     ret = sorm_select_all_array_by_join(conn, 
             "drive, password"
-            , DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+            , DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, 
             (sorm_table_descriptor_t**)&select_volume);
 
@@ -1550,8 +1550,8 @@ static void test_sorm_select_columns_by_join()
     //printf("select device.* and volume.uuid\n");
     ret = sorm_select_all_array_by_join(conn, 
             "device.*, volume.uuid"
-            , DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+            , DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, 
             (sorm_table_descriptor_t**)&select_volume);
 
@@ -1575,8 +1575,8 @@ static void test_sorm_select_columns_by_join()
     //printf("select device.uuid and volume.*\n");
     ret = sorm_select_all_array_by_join(conn, 
             "device.uuid, volume.*"
-            , DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+            , DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, 
             (sorm_table_descriptor_t**)&select_volume);
 
@@ -1700,8 +1700,8 @@ static void test_volume_select_by_driver(void)
     volume_free(select_volume);
 
     /*  use filter */
-    ret = volume_select_all_array_by_device(conn, VOLUME".*", 
-            DEVICE__ID" = 0", &n, &select_volume);
+    ret = volume_select_all_array_by_device(conn, TABLE__VOLUME".*", 
+            COLUMN__DEVICE__ID" = 0", &n, &select_volume);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 2);
     for(i = 0; i < n; i ++)
@@ -1801,8 +1801,8 @@ static void test_sorm_select_null_by_join(void)
     volume->label_stat = SORM_STAT_VALUED;
     volume_save(conn, volume);
 
-    ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+    ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             NULL, (sorm_table_descriptor_t**)&select_volume);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 5);
@@ -1819,8 +1819,8 @@ static void test_sorm_select_null_by_join(void)
     }
     volume_free(select_volume);
 
-    ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+    ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, NULL);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 5);
@@ -1836,15 +1836,15 @@ static void test_sorm_select_null_by_join(void)
     }
     device_free(select_device);
 
-    ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+    ret = sorm_select_all_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             NULL, NULL);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 5);
 
     n = 3;
-    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             NULL, (sorm_table_descriptor_t**)&select_volume);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 3);
@@ -1861,8 +1861,8 @@ static void test_sorm_select_null_by_join(void)
     }
     volume_free(select_volume);
 
-    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             (sorm_table_descriptor_t**)&select_device, NULL);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 3);
@@ -1878,8 +1878,8 @@ static void test_sorm_select_null_by_join(void)
     }
     device_free(select_device);
 
-    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DEVICE_DESC, DEVICE__ID,
-            VOLUME_DESC, VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
             NULL, NULL);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 3);

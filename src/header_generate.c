@@ -41,7 +41,7 @@ static void header_generate_define(
         upper_column_name = 
             sys_malloc(strlen(table_desc->columns[i].name) + 1);
         case_lower2upper(table_desc->columns[i].name, upper_column_name);
-        fprintf(file, "#define %s_%s_MAX_LEN %d\n", 
+        fprintf(file, "#define %s__%s__MAX_LEN %d\n", 
                 upper_table_name, upper_column_name, 
                 table_desc->columns[i].max_len);
         free(upper_column_name);
@@ -51,13 +51,13 @@ static void header_generate_define(
 
     /* #define NAME */
 
-    fprintf(file, "#define %s \"%s\"\n", upper_table_name, table_desc->name);
+    fprintf(file, "#define TABLE__%s \"%s\"\n", upper_table_name, table_desc->name);
     for(i = 0; i < table_desc->columns_num; i ++)
     {
         upper_column_name = 
             sys_malloc(strlen(table_desc->columns[i].name) + 1);
         case_lower2upper(table_desc->columns[i].name, upper_column_name);
-        fprintf(file, "#define %s__%s \"%s.%s\"\n", 
+        fprintf(file, "#define COLUMN__%s__%s \"%s.%s\"\n", 
                 upper_table_name, upper_column_name, 
                 table_desc->name, table_desc->columns[i].name);
         free(upper_column_name);
@@ -67,7 +67,7 @@ static void header_generate_define(
 
     
     /* #define XXXX_DESC xxxx_get_desc() */
-    fprintf(file, "#define %s_DESC %s_get_desc()\n\n", upper_table_name, 
+    fprintf(file, "#define DESC__%s %s_get_desc()\n\n", upper_table_name, 
             table_desc->name);
     /* define for list iterate */
     fprintf(file, "#define %s_list_for_each(data, pos, head) \\\n"
@@ -126,7 +126,7 @@ static void header_generate_struct(
                     case_lower2upper(
                             table_desc->columns[i].name, upper_column_name);
 
-                    fprintf(file, INDENT "char        %s[%s_%s_MAX_LEN + 1];\n\n",
+                    fprintf(file, INDENT "char        %s[%s__%s__MAX_LEN + 1];\n\n",
                             table_desc->columns[i].name,
                             upper_table_name, upper_column_name);
                     sys_free(upper_column_name);
@@ -153,7 +153,7 @@ static void header_generate_struct(
                     case_lower2upper(
                             table_desc->columns[i].name, upper_column_name);
 
-                    fprintf(file, INDENT "char        %s[%s_%s_MAX_LEN + 1];\n\n",
+                    fprintf(file, INDENT "char        %s[%s__%s__MAX_LEN + 1];\n\n",
                             table_desc->columns[i].name,
                             upper_table_name, upper_column_name);
                     sys_free(upper_column_name);

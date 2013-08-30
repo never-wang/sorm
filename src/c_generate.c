@@ -49,7 +49,7 @@ static void c_generate_column_desc(
                 INDENT_TWICE "%s,\n"            /* type                 */
                 INDENT_TWICE "%s,\n"            /* constraint           */
                 INDENT_TWICE "%s,\n"            /* mem                  */
-                INDENT_TWICE "%s_%s_MAX_LEN,\n"    /* text_max_len         */
+                INDENT_TWICE "%s__%s__MAX_LEN,\n"    /* text_max_len         */
                 INDENT_TWICE "SORM_OFFSET(%s_t, %s),\n"
                 /* offset               */
                 INDENT_TWICE "%d,\n"            /* is_foreign_key       */
@@ -479,8 +479,8 @@ static void c_generate_func_select(
                     INDENT_TWICE "const char *column_names, const char *filter,\n" 
                     INDENT_TWICE "int *n, %s_t **%ss_array)\n{\n"
                     INDENT     "return sorm_select_some_array_by_join(conn, column_names,\n"
-                    INDENT_TRIPLE "&%s_table_descriptor, %s__%s,\n"
-                    INDENT_TRIPLE "%s_DESC, %s__%s, \n"
+                    INDENT_TRIPLE "&%s_table_descriptor, COLUMN__%s__%s,\n"
+                    INDENT_TRIPLE "DESC__%s, COLUMN__%s__%s, \n"
                     INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, \n"
                     INDENT_TRIPLE "(sorm_table_descriptor_t **)%ss_array, NULL);\n}\n\n",
                     table_desc->name, column_desc->foreign_table_name,
@@ -492,7 +492,8 @@ static void c_generate_func_select(
                     INDENT_TWICE"const char *column_names, const char *filter,\n" 
                     INDENT_TWICE"int *n, sorm_list_t **%ss_list_head)\n{\n"
                     INDENT     "return sorm_select_some_list_by_join(conn, column_names,\n"
-                    INDENT_TRIPLE "&%s_table_descriptor, %s__%s, %s_DESC, %s__%s, \n"
+                    INDENT_TRIPLE "&%s_table_descriptor, COLUMN__%s__%s, \n"
+                    INDENT_TRIPLE "DESC__%s, COLUMN__%s__%s, \n"
                     INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, %ss_list_head, NULL);\n}\n\n",
                     table_desc->name, column_desc->foreign_table_name,
                     table_desc->name, table_desc->name, 
@@ -503,7 +504,8 @@ static void c_generate_func_select(
                     INDENT_TWICE "const char *column_names, const char *filter,\n"
                     INDENT_TWICE "int *n, %s_t **%ss_array)\n{\n"
                     INDENT     "return sorm_select_all_array_by_join(conn, column_names,\n"
-                    INDENT_TRIPLE "&%s_table_descriptor, %s__%s, %s_DESC, %s__%s, \n"
+                    INDENT_TRIPLE "&%s_table_descriptor, COLUMN__%s__%s,\n"
+                    INDENT_TRIPLE "DESC__%s, COLUMN__%s__%s, \n"
                     INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, \n"
                     INDENT_TRIPLE "(sorm_table_descriptor_t **)%ss_array, NULL);\n}\n\n",
                     table_desc->name, column_desc->foreign_table_name,
@@ -515,7 +517,8 @@ static void c_generate_func_select(
                     INDENT_TWICE "const char *column_names, const char *filter,\n" 
                     INDENT_TWICE "int *n, sorm_list_t **%ss_list_head)\n{\n"
                     INDENT     "return sorm_select_all_list_by_join(conn, column_names,\n"
-                    INDENT_TRIPLE "&%s_table_descriptor, %s__%s, %s_DESC, %s__%s, \n"
+                    INDENT_TRIPLE "&%s_table_descriptor, COLUMN__%s__%s,\n"
+                    INDENT_TRIPLE "DESC__%s, COLUMN__%s__%s, \n"
                     INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, %ss_list_head, NULL);\n}\n\n",
                     table_desc->name, column_desc->foreign_table_name,
                     table_desc->name, table_desc->name, 
