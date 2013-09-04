@@ -50,6 +50,7 @@ static void header_generate_define(
     fprintf(file, "\n");
 
     /* #define NAME */
+    fprintf(file, "#define %s__ALL_COLUMNS \"%s.*\"\n", upper_table_name, table_desc->name);
 
     fprintf(file, "#define TABLE__%s \"%s\"\n", upper_table_name, table_desc->name);
     for(i = 0; i < table_desc->columns_num; i ++)
