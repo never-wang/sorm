@@ -37,11 +37,6 @@ static inline int log_init()
     if(zlog_category == NULL)
     {
         ret = zlog_init(ZLOG_CONF);
-        if(ret != 0)
-        {
-            printf("zlog init fail.\n");
-            return LOG_INIT_FAIL;
-        }
         zlog_category = zlog_get_category("SORM");
         if(zlog_category == NULL)
         {
@@ -70,6 +65,10 @@ static inline void log_final()
 #define log_debug(f...) \
     do { \
         zlog_debug(zlog_category, ##f); \
+    } while(0)
+#define log_warn(f...) \
+    do { \
+        zlog_warn(zlog_category, ##f); \
     } while(0)
 #define log_error(f...) \
     do { \

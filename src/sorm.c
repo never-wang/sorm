@@ -437,6 +437,7 @@ static inline int  _sqlite3_step(
         const sorm_connection_t *conn, sqlite3_stmt *stmt_handle)
 {
     int ret;
+    int retry_time = 0;
 
     if((conn->transaction_num == 0) && 
             (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
@@ -444,8 +445,18 @@ static inline int  _sqlite3_step(
         sem_p(conn->sem_key);
     }
 
+    /* although we use semaphore to prevent the happen of 
+     * SQLITE_BUSY, it doesn't work sometimes, so we add retry*/
+    do {
+        ret = sqlite3_step(stmt_handle);
+        retry_time ++;
+    } while((ret == SQLITE_BUSY) && (retry_time < BUSY_RETRY_TIME));
 
-    ret = sqlite3_step(stmt_handle);
+    if(retry_time > 1)
+    {
+        log_info("sqlite_step succeed when retry %d times", 
+                retry_time);
+    }
 
     if((conn->transaction_num == 0) && 
             (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
@@ -460,6 +471,7 @@ static inline int _sqlite3_prepare(
         const sorm_connection_t *conn, char *sql_stmt, sqlite3_stmt **stmt_handle)
 {
     int ret;
+    int retry_time = 0;
     assert(conn != NULL);
 
     if((conn->transaction_num == 0) && 
@@ -468,9 +480,50 @@ static inline int _sqlite3_prepare(
         sem_p(conn->sem_key);
     }
 
+    do {
+        ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
+            SQL_STMT_MAX_LEN, stmt_handle, NULL);
+        retry_time ++;
+    }while((ret == SQLITE_BUSY) && (retry_time < BUSY_RETRY_TIME));
 
-    ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, SQL_STMT_MAX_LEN,
-            stmt_handle, NULL);
+    if(retry_time > 1)
+    {
+        log_info("sqlite_prepare succeed when retry %d times", 
+                retry_time);
+    }
+
+    if((conn->transaction_num == 0) && 
+            (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
+    {
+        sem_v(conn->sem_key);
+    }
+
+    return ret;
+}
+
+static inline int _sqlite3_finalize(
+        const sorm_connection_t *conn, sqlite3_stmt *stmt_handle)
+{
+    int ret;
+    int retry_time = 0;
+    assert(conn != NULL);
+
+    if((conn->transaction_num == 0) && 
+            (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
+    {
+        sem_p(conn->sem_key);
+    }
+    
+    do{
+        ret = sqlite3_finalize(stmt_handle);
+        retry_time ++;
+    }while((ret == SQLITE_BUSY) && (retry_time < BUSY_RETRY_TIME));
+    
+    if(retry_time > 1)
+    {
+        log_info("sqlite_final succeed when retry %d times", 
+                retry_time);
+    }
 
     if((conn->transaction_num == 0) && 
             (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
@@ -1113,7 +1166,7 @@ int sorm_open(
         {
             ret_val = SORM_OK;
         }
-        ret = sqlite3_finalize(stmt_handle);
+        ret = _sqlite3_finalize(_connection, stmt_handle);
         if(ret != SQLITE_OK)
         {
             log_debug("sqlite3_finalize error : %s", 
@@ -1170,7 +1223,7 @@ int sorm_run_stmt(
     ret_val = SORM_OK;
 
 DB_FINALIZE :
-    ret = sqlite3_finalize(stmt_handle);
+    ret = _sqlite3_finalize(conn, stmt_handle);
     if(ret != SQLITE_OK)
     {
         log_debug("sqlite3_finalize error : %s", 
@@ -1425,7 +1478,7 @@ int sorm_create_table(
     ret_val = SORM_OK;
 
 DB_FINALIZE :
-    ret = sqlite3_finalize(stmt_handle);
+    ret = _sqlite3_finalize(conn, stmt_handle);
     if(ret != SQLITE_OK)
     {
         log_debug("sqlite3_finalize error : %s", 
@@ -1490,7 +1543,7 @@ int sorm_delete_table(
     ret_val = SORM_OK;
 
 DB_FINALIZE :
-    ret = sqlite3_finalize(stmt_handle);
+    ret = _sqlite3_finalize(conn, stmt_handle);
     if(ret != SQLITE_OK)
     {
         log_debug("sqlite3_finalize error : %s", 
@@ -1871,7 +1924,7 @@ int sorm_save(
     ret_val = SORM_OK;
 
 DB_FINALIZE :
-    ret = sqlite3_finalize(stmt_handle);
+    ret = _sqlite3_finalize(conn, stmt_handle);
     if(ret != SQLITE_OK)
     {
         log_debug("sqlite3_finalize error : %s", 
@@ -1977,7 +2030,7 @@ int sorm_delete(
     ret_val = SORM_OK;
 
 DB_FINALIZE :
-    ret = sqlite3_finalize(stmt_handle);
+    ret = _sqlite3_finalize(conn, stmt_handle);
     if(ret != SQLITE_OK)
     {
         log_debug("sqlite3_finalize error : %s", 
@@ -2103,7 +2156,7 @@ int sorm_delete_by(
     ret_val = SORM_OK;
 
 DB_FINALIZE:
-    ret = sqlite3_finalize(stmt_handle);
+    ret = _sqlite3_finalize(conn, stmt_handle);
     if(ret != SQLITE_OK)
     {
         log_debug("sqlite3_finalize error : %s", 
@@ -2282,7 +2335,7 @@ static int _select(
 
 DB_FINALIZE:
 
-    ret = sqlite3_finalize(stmt_handle);
+    ret = _sqlite3_finalize(conn, stmt_handle);
     if(ret != SQLITE_OK)
     {
         log_debug("sqlite3_finalize error : %s", 
@@ -3150,10 +3203,6 @@ int sorm_rollback_transaction(sorm_connection_t *conn)
         }
 
         ret = sqlite3_step(stmt_handle);
-        if(sorm_semaphore_enabled(conn->flags) == 1)
-        {
-            sem_v(conn->sem_key);
-        }
 
         if(ret != SQLITE_DONE)
         {
@@ -3165,7 +3214,13 @@ int sorm_rollback_transaction(sorm_connection_t *conn)
         ret_val = SORM_OK;
 
 DB_FINALIZE :
-        ret = sqlite3_finalize(stmt_handle);
+        ret = _sqlite3_finalize(conn, stmt_handle);
+        
+        if(sorm_semaphore_enabled(conn->flags) == 1)
+        {
+            sem_v(conn->sem_key);
+        }
+        
         if(ret != SQLITE_OK)
         {
             log_debug("sqlite3_finalize error : %s", 
@@ -3341,7 +3396,7 @@ int sorm_create_index(
 
 DB_FINALIZE :
 
-    ret = sqlite3_finalize(stmt_handle);
+    ret = _sqlite3_finalize(conn, stmt_handle);
     if(ret != SQLITE_OK)
     {
         log_debug("sqlite3_finalize error : %s", 
@@ -3416,7 +3471,7 @@ int sorm_drop_index(
 
 DB_FINALIZE :
 
-    ret = sqlite3_finalize(stmt_handle);
+    ret = _sqlite3_finalize(conn, stmt_handle);
     if(ret != SQLITE_OK)
     {
         log_debug("sqlite3_finalize error : %s", 

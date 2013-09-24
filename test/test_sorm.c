@@ -76,9 +76,34 @@ static int suite_sorm_init(void)
     return 0;
 }
 
+static int _save_device_range(int num)
+{
+    device_t *device;
+    int i;
+
+    for(i = 0; i < num; i ++)
+    {
+        device = device_new();
+
+        device->id = i;
+        device->id_stat = SORM_STAT_VALUED;
+        sprintf(device->uuid,"uuid-%d", i);
+        device->uuid_stat = SORM_STAT_VALUED;
+        sprintf(device->name,"name-%d", i);
+        device->name_stat = SORM_STAT_VALUED;
+        sprintf(device->password, "passwd-%d", i);
+        device->password_stat = SORM_STAT_VALUED;
+
+        device_save(conn, device);
+
+        device_free(device);
+    }
+}
+
 static int suite_sorm_final(void)
 {
     int ret;
+    int n;
 
     ret = volume_delete_table(conn);
     if(ret != SORM_OK)
@@ -235,7 +260,7 @@ static void test_device_update(void)
     device_free(update_device);
     device_free(get_device);
 
-    ret = device_delete(conn, device);
+    ret = device_delete_by_id(conn, 1);
 }
 
 static int _insert_long_row_into_device(int id, char *name)
@@ -817,6 +842,8 @@ static void test_transaction(void)
     ret = device_select_by_id(conn, ALL_COLUMNS, 2, &get_device);
     CU_ASSERT(ret == SORM_NOEXIST);
     CU_ASSERT(get_device == NULL);
+    
+    ret = device_delete_by(conn, COLUMN__DEVICE__ID" <= 10");
 
     device_free(device);
 }
@@ -960,6 +987,38 @@ static void test_delete_by_id(void)
     CU_ASSERT(select_device == NULL);
 
     device_free(select_device);
+}
+
+static void test_delete_by(void)
+{
+    device_t *device;
+    int ret, n;
+
+    /*insert some value for select*/
+    _save_device_range(10);
+    ret = device_delete_by(conn, NULL);
+    CU_ASSERT(ret == SORM_OK);
+    ret = device_select_all_array_by(conn, DEVICE__ALL_COLUMNS, NULL, &n, NULL);
+    CU_ASSERT(ret == SORM_NOEXIST);
+    CU_ASSERT(n == 0);
+    
+    _save_device_range(10);
+    ret = device_select_all_array_by(conn, DEVICE__ALL_COLUMNS, NULL, &n, NULL);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(n == 10);
+
+    ret = device_delete_by(conn, COLUMN__DEVICE__ID " <= 4");
+    CU_ASSERT(ret == SORM_OK);
+
+    ret = device_select_all_array_by(conn, DEVICE__ALL_COLUMNS, NULL, &n, NULL);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(n == 5);
+
+    ret = device_delete_by(conn, COLUMN__DEVICE__ID " <= 9");
+    CU_ASSERT(ret == SORM_OK);
+    ret = device_select_all_array_by(conn, DEVICE__ALL_COLUMNS, NULL, &n, NULL);
+    CU_ASSERT(ret == SORM_NOEXIST);
+    CU_ASSERT(n == 0);
 }
 
 static void test_select_by_column(void)
@@ -2357,6 +2416,7 @@ static CU_TestInfo tests_device[] = {
     {"15.test_PK", test_PK}, 
     {"16.test_to_string", test_to_string},
     {"17.test_int64", test_int64},
+    {"17.test_delete_by", test_delete_by},
     CU_TEST_INFO_NULL,
 };
 

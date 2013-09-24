@@ -46,6 +46,8 @@
 #define NO_INDEXES_IN_RESULT -1 /* used in indexes_in_result , means
                                    the column has not been selected */
 
+#define BUSY_RETRY_TIME 10 /* if a database  meet busy, 
+                              the retry time*/
 /* sorm_list */
 typedef struct sorm_list_s
 {

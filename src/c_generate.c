@@ -260,6 +260,13 @@ static void c_generate_func_delete(
     fprintf(file, INDENT "return sorm_delete"
             "(conn, (sorm_table_descriptor_t *)%s);\n", table_desc->name);
     fprintf(file, "}\n\n");
+    
+    fprintf(file, "int %s_delete_by(const sorm_connection_t *conn, "
+            "const char *filter)\n{\n", table_desc->name);
+    fprintf(file, INDENT "return sorm_delete_by"
+            "(conn, &%s_table_descriptor, filter);\n", table_desc->name, 
+            table_desc->name);
+    fprintf(file, "}\n\n");
 
     for(i = 0; i < table_desc->columns_num; i ++)
     {

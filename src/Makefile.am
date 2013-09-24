@@ -11,6 +11,6 @@ sorm_generate_SOURCES = generate.c generate.h header_generate.c header_generate.
 						c_generate.c c_generate.h parser_yacc.y parser_lex.l \
 						log.c log.h
 sorm_generate_LDADD = libsorm.la -ldl
-sorm_generate_CFLAGS = -I$(ZLOG_DIR)
+sorm_generate_CFLAGS = -I$(ZLOG_DIR) -I$(SQLITE_DIR)
 
 include_HEADERS = sorm.h
