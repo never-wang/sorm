@@ -20,7 +20,8 @@ depcomp
 install-sh
 libtool
 ltmain.sh
-m4/
+m4/libtool.m4
+m4/lt*.m4
 missing
 src/parser_lex.c
 src/parser_yacc.c
@@ -40,3 +41,4 @@ test/volume_sorm.h
 *.db
 *.out
 test/test_transaction
+test/db_test

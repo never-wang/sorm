@@ -2133,6 +2133,7 @@ static void test_to_string(void)
     char string[1024];
     char string_short[4];
     int ret;
+    char *ret_string;
 
     device = device_new();
     device_set_uuid(device, "uuid");
@@ -2141,9 +2142,9 @@ static void test_to_string(void)
         "name(null); password(null); small_num(null); "
         "big_num(null); }";
 
-    ret = device_to_string(device, string, 1024);
-    CU_ASSERT(ret == SORM_OK)
+    ret_string = device_to_string(device, string, 1024);
     CU_ASSERT(strcmp(string, string1) == 0);
+    CU_ASSERT(strcmp(string, ret_string) == 0);
         
     device_set_id(device, 1);
     device_set_name(device, "name");
@@ -2156,11 +2157,14 @@ static void test_to_string(void)
         "password(\"password\"); "
         "small_num(null); "
         "big_num(null); }";
-    ret = device_to_string(device, string, 1024);
-    CU_ASSERT(ret == SORM_OK)
+    ret_string = device_to_string(device, string, 1024);
     CU_ASSERT(strcmp(string, string2) == 0);
-    ret = device_to_string(device, string_short, 4);
-    CU_ASSERT(ret == SORM_STRING_BUF_NOT_ENOUGH);
+    CU_ASSERT(strcmp(string, ret_string) == 0);
+    
+    char *string3 = "dev";
+    ret_string = device_to_string(device, string_short, 4);
+    CU_ASSERT(strcmp(string_short, string3) == 0);
+    CU_ASSERT(strcmp(string_short, ret_string) == 0);
 
     device_free(device);
 }
@@ -2391,8 +2395,7 @@ static void test_tb_to_string(void)
             "text_stack(null); blob_heap(%d); blob_stack(%d); }", 
             sizeof(blob_t), sizeof(blob_t));
 
-    ret = text_blob_to_string(text_blob, string, 1024);
-    CU_ASSERT(ret == SORM_OK)
+    text_blob_to_string(text_blob, string, 1024);
     CU_ASSERT(strcmp(string, string1) == 0);
 
     text_blob_free(text_blob);

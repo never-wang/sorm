@@ -179,7 +179,7 @@ static void header_generate_struct(
 static void header_generate_func_to_string(
         FILE *file, const sorm_table_descriptor_t* table_desc)
 {
-    fprintf(file, "int %s_to_string(\n"
+    fprintf(file, "char* %s_to_string(\n"
             INDENT_TWICE "%s_t *%s, char *string, int len);\n\n", 
             table_desc->name, table_desc->name, table_desc->name);
 }

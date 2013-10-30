@@ -1,0 +1,3 @@
+Add this file to make m4 directory included in Git.
+The m4 directory is used by libtool, and need "AC_CONFIG_MACRO_DIR([m4])" in configure.ac
+However, we run autoreconf before libtool. The autoreconf does not create m4 directory automatically, but it should make sure that m4 directory exits. Then this will result an error in autoreconf.

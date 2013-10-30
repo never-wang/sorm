@@ -1234,7 +1234,7 @@ DB_FINALIZE :
     return ret_val;
 }
 
-int sorm_to_string(const sorm_table_descriptor_t *table_desc,
+char* sorm_to_string(const sorm_table_descriptor_t *table_desc,
         char *string, int len)
 {
     int offset, ret, i;
@@ -1247,7 +1247,7 @@ int sorm_to_string(const sorm_table_descriptor_t *table_desc,
         log_debug("snprintf error while constructing string for %s, "
                 "snprintf length(%d) > max length(%d)", table_desc->name,
                 offset, len - 1);
-        return SORM_STRING_BUF_NOT_ENOUGH;
+        return string;
     }
 
     for(i = 0; i < table_desc->columns_num; i ++)
@@ -1281,7 +1281,7 @@ int sorm_to_string(const sorm_table_descriptor_t *table_desc,
                             break;
                         default :
                             log_error("unknow sorm mem : %d", column_desc->mem);
-                            return SORM_INVALID_MEM;
+                            return NULL;
                     }
                     ret = snprintf(string + offset, len - offset + 1, 
                             "%s(\"%s\"); ", 
@@ -1300,7 +1300,7 @@ int sorm_to_string(const sorm_table_descriptor_t *table_desc,
                     break;
                 default :
                     log_debug("unknow sorm type : %d", column_desc->type);
-                    return SORM_INVALID_TYPE;
+                    return NULL;
             }
         }else
         {
@@ -1313,7 +1313,7 @@ int sorm_to_string(const sorm_table_descriptor_t *table_desc,
             log_debug("snprintf error while constructing string for %s, "
                     "snprintf length(%d) > max length(%d)", table_desc->name,
                     offset, len - 1);
-            return SORM_STRING_BUF_NOT_ENOUGH;
+            return string;
         }
     }
 
@@ -1324,10 +1324,10 @@ int sorm_to_string(const sorm_table_descriptor_t *table_desc,
         log_debug("snprintf error while constructing string for %s, "
                 "snprintf length(%d) > max length(%d)", table_desc->name,
                 offset, len - 1);
-        return SORM_STRING_BUF_NOT_ENOUGH;
+        return string;
     }
 
-    return SORM_OK;
+    return string;
 }
 
 int sorm_create_table(
