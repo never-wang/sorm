@@ -1241,6 +1241,18 @@ char* sorm_to_string(const sorm_table_descriptor_t *table_desc,
     sorm_column_descriptor_t *column_desc;
     char *data;
 
+    if(table_desc == NULL)
+    {
+        log_debug("Param table_desc is NULL.");
+        return NULL;
+    }
+    
+    if(string  == NULL)
+    {
+        log_debug("Param string is NULL.");
+        return NULL;
+    }
+
     offset = ret = snprintf(string, len, "%s { ", table_desc->name);
     if(ret < 0 || offset > (len - 1))
     {
