@@ -2220,6 +2220,57 @@ static void test_text(void)
     text_blob_free(text_blob);
 }
 
+static void test_single_quote(void)
+{
+    device_t *device, *select_device;
+
+    char *uuid = "single'quote";
+    int ret;
+
+    device = device_new();
+    device_set_uuid(device, uuid);
+    ret = device_save(conn, device);
+    CU_ASSERT(ret == SORM_OK);
+    ret = device_select_by_uuid(conn, "*", uuid, &select_device);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(strcmp(select_device->uuid, uuid) == 0);
+    ret = device_delete(conn, device);
+    CU_ASSERT(ret == SORM_OK);
+    ret = device_select_by_uuid(conn, "*", uuid, &select_device);
+    CU_ASSERT(ret == SORM_NOEXIST);
+
+    ret = device_save(conn, device);
+    ret = device_delete_by_uuid(conn, uuid);
+    ret = device_select_by_uuid(conn, "*", uuid, &select_device);
+    CU_ASSERT(ret == SORM_NOEXIST);
+}
+
+static void test_double_quote(void)
+{
+    device_t *device, *select_device;
+
+    char *uuid = "double\"quote";
+    int ret;
+
+    device = device_new();
+    device_set_uuid(device, uuid);
+    ret = device_save(conn, device);
+    CU_ASSERT(ret == SORM_OK);
+    ret = device_select_by_uuid(conn, "*", uuid, &select_device);
+    CU_ASSERT(ret == SORM_OK);
+    CU_ASSERT(strcmp(select_device->uuid, uuid) == 0);
+    ret = device_delete(conn, device);
+    CU_ASSERT(ret == SORM_OK);
+    ret = device_select_by_uuid(conn, "*", uuid, &select_device);
+    CU_ASSERT(ret == SORM_NOEXIST);
+
+    ret = device_save(conn, device);
+    ret = device_delete_by_uuid(conn, uuid);
+    ret = device_select_by_uuid(conn, "*", uuid, &select_device);
+    CU_ASSERT(ret == SORM_NOEXIST);
+}
+
+
 static void test_int64(void)
 {
     device_t *device, *select_device;
@@ -2419,7 +2470,9 @@ static CU_TestInfo tests_device[] = {
     {"15.test_PK", test_PK}, 
     {"16.test_to_string", test_to_string},
     {"17.test_int64", test_int64},
-    {"17.test_delete_by", test_delete_by},
+    {"18.test_delete_by", test_delete_by},
+    {"19.test_single_quote", test_single_quote},
+    {"19.test_double_quote", test_single_quote},
     CU_TEST_INFO_NULL,
 };
 

@@ -342,6 +342,20 @@ int sorm_init();
 void sorm_final();
 
 /**
+ * @brief: for the string with single quote, replace the single 
+ * quote with two single quote. the len is used to prevent from
+ * overflow
+ *
+ * @param string: 
+ * @param fixed_string:
+ * @param len: the length of the buffer to store the fixed string
+ *
+ * @return: SORM_OK; SORM_TOO_LONG
+ */
+int sorm_fix_string(
+        const char *string, char *fixed_string, int len);
+
+/**
  * @brief: create a connection to a database
  *
  * @param path: database file path

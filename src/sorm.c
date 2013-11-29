@@ -301,11 +301,6 @@ static inline void trim(char **str_p, char *str_end)
 /**
  * @brief: call sqlite3_column to get a column value of a row
  *
- * @param column_desc: 
- * @param index: the index of the column, start from 0
- * @param get_row: the got row where store the got value
- * @param stmt_handle: the sqlit3 result
- *
  * @return:  error code
  */
 static inline int _sqlite3_column(
@@ -938,6 +933,54 @@ static inline int _parse_select_result(
     //log_debug("Success return.");
     return SORM_OK;
 }
+/**
+ * @brief: for the string with single quote, replace the single 
+ * quote with two single quote. the len is used to prevent from
+ * overflow
+ *
+ * @param string: 
+ * @param fixed_string:
+ * @param len: the length of the buffer to store the fixed string
+ *
+ * @return: SORM_OK; SORM_TOO_LONG
+ */
+static inline int _fix_string(
+        const char *string, char *fixed_string, int len)
+{
+    const char *iter = string;
+    char *fixed_iter = fixed_string;
+
+    int string_len = 0, i;
+    int fixed_string_len = 0;
+
+    while ((*iter) != '\0') {
+        string_len ++;
+        iter ++;
+        if ((*iter) == '\'') {
+            fixed_string_len ++;
+        }
+    }
+    fixed_string_len += string_len;
+    if (fixed_string_len >= len) {
+        log_debug("the fixed string buffer(%d) is not long enough"
+                "for fixed string(%d)", len, fixed_string_len);
+        return SORM_TOO_LONG;   
+    }
+
+    for (i = fixed_string_len; i >= 0; i --) {
+        fixed_string[i] = *iter;
+        if ((*iter) == '\'') {
+            i --;
+            fixed_string[i] = *iter;
+        }
+        iter --;
+    }
+
+    log_debug("string(%s) is fixed to (%s)", string, fixed_string);
+
+    return SORM_OK;
+}
+
 
 /**
  * @brief: construct a filter for a column value
@@ -954,7 +997,8 @@ static inline int _construct_column_filter(
         const void *column_value, char *filter)
 {
     const sorm_column_descriptor_t *column_desc;
-    int offset;
+    int offset, ret;
+    char fixed_buf[SQL_STMT_MAX_LEN + 1];
 
     log_debug("Start.");
 
@@ -975,8 +1019,12 @@ static inline int _construct_column_filter(
                     column_desc->name, *((int64_t*)column_value));
             break;
         case SORM_TYPE_TEXT :
+            if ((ret = _fix_string(column_value, fixed_buf, 
+                        SQL_STMT_MAX_LEN + 1)) != SORM_OK) {
+                return ret;
+            }
             offset = snprintf(filter, SQL_STMT_MAX_LEN + 1, "%s = '%s'", 
-                    column_desc->name, (char*)column_value);
+                    column_desc->name, fixed_buf);
             break;
         case SORM_TYPE_DOUBLE :
             offset = snprintf(filter, SQL_STMT_MAX_LEN + 1, "%s = %f", 
@@ -1098,6 +1146,12 @@ void sorm_final()
 {
     log_final();
     sem_final();
+}
+
+int sorm_fix_string(
+        const char *string, char *fixed_string, int len)
+{
+    return _fix_string(string, fixed_string, len);
 }
 
 int sorm_open(
@@ -2180,8 +2234,10 @@ DB_FINALIZE:
 }
 
 int sorm_select_one_by_column(
-        const sorm_connection_t *conn, const sorm_table_descriptor_t *table_desc,
-        const char *columns_name, int column_index, const void *column_value,
+        const sorm_connection_t *conn, 
+        const sorm_table_descriptor_t *table_desc,
+        const char *columns_name, int column_index, 
+        const void *column_value,
         sorm_table_descriptor_t **get_row)
 {
     char filter[SQL_STMT_MAX_LEN + 1];
