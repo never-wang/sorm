@@ -46,7 +46,7 @@
 #define NO_INDEXES_IN_RESULT -1 /* used in indexes_in_result , means
                                    the column has not been selected */
 
-#define BUSY_RETRY_TIME 10 /* if a database  meet busy, 
+#define BUSY_RETRY_TIME 10 /*  if a database  meet busy, 
                               the retry time*/
 /* sorm_list */
 typedef struct sorm_list_s
@@ -341,6 +341,9 @@ void sorm_set_allocator(void *memory_pool,
 int sorm_init();
 void sorm_final();
 
+char* sorm_to_string(const sorm_table_descriptor_t *table_desc,
+        char *string, int len);
+
 /**
  * @brief: for the string with single quote, replace the single 
  * quote with two single quote. the len is used to prevent from
@@ -389,20 +392,6 @@ int sorm_close(sorm_connection_t *conn);
  */
 int sorm_run_stmt(
         const sorm_connection_t *conn, char *sql_stmt);
-
-/**
- * @brief: covent an sorm object to string, the caller should provide 
- * with a buffer to store the string. If the buffer is not big enough
- * for the string, the sting will be truncated.
- *
- * @param table_desc: pointer to the sorm object
- * @param string: point to the buffer for storing the string
- * @param len: the length of the buffer
- *
- * @return: pointer to the string. if any error happens, return NULL.
- */
-char* sorm_to_string(const sorm_table_descriptor_t *table_desc,
-        char *string, int len);
 /**
  * @brief: create a table in a database according the table's descriptor
  *

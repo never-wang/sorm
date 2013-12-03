@@ -301,6 +301,11 @@ static inline void trim(char **str_p, char *str_end)
 /**
  * @brief: call sqlite3_column to get a column value of a row
  *
+ * @param column_desc: 
+ * @param index: the index of the column, start from 0
+ * @param get_row: the got row where store the got value
+ * @param stmt_handle: the sqlit3 result
+ *
  * @return:  error code
  */
 static inline int _sqlite3_column(
@@ -980,7 +985,6 @@ static inline int _fix_string(
 
     return SORM_OK;
 }
-
 
 /**
  * @brief: construct a filter for a column value
@@ -3288,7 +3292,7 @@ DB_FINALIZE :
         {
             sem_v(conn->sem_key);
         }
-        
+
         if(ret != SQLITE_OK)
         {
             log_debug("sqlite3_finalize error : %s", 
