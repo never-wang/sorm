@@ -19,6 +19,7 @@
 #include "stdio.h"
 #include "generate.h"
 #include "memory.h"
+#include "sorm.h"
 
 sorm_table_descriptor_t *table_desc = NULL;
 sorm_list_t *columns_list_head = NULL;
@@ -63,6 +64,19 @@ int main(int argc, char **argv)
 
         sys_free(column_desc);
         column_desc = NULL;
+
+        /* read create sql */
+        int ret = fseek(yyin, 0, SEEK_SET);
+        if (ret != 0) {
+            printf("fseek(%s) fail : %s", argv[argv_index],
+                    strerror(errno));
+        }
+        char create_sql[SQL_STMT_MAX_LEN + 1];
+        char *ret_str = 
+            fgets(create_sql, SQL_STMT_MAX_LEN + 1, yyin);
+        create_sql[strlen(create_sql) - 1] = '\0';
+        table_desc->create_sql = create_sql;
+        fclose(yyin);
 
         table_desc->columns = sys_malloc(sizeof(sorm_column_descriptor_t) * 
                 table_desc->columns_num);

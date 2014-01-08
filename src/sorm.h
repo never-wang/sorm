@@ -174,6 +174,12 @@ typedef enum
     SORM_CONSTRAINT_UNIQUE,
 } sorm_constraint_t;
 
+#define sorm_is_unique_column(constraint) \
+    ((constraint == SORM_CONSTRAINT_PK) || \
+     (constraint == SORM_CONSTRAINT_PK_ASC) || \
+     (constraint == SORM_CONSTRAINT_PK_DESC) || \
+     (constraint == SORM_CONSTRAINT_UNIQUE)) 
+
 /** @brief:  status for the member in an SORM　object*/
 #define SORM_STAT_NULL      0x0 /* the member has no value */
 #define SORM_STAT_VALUED    0x1 /* the member has a value */
@@ -216,6 +222,7 @@ typedef struct sorm_table_descriptor_s
     int columns_num;    /* number of column in the table */
     int PK_index;    /* index for Primary key, SORM_NO_PK means that there is 
                         not Primay key */
+    char *create_sql;   /* the sql used to create the table */
     sorm_column_descriptor_t *columns; /* descriptor of columns */
 } sorm_table_descriptor_t;
 
@@ -615,5 +622,8 @@ int sorm_create_index(
 int sorm_drop_index(
         const sorm_connection_t *conn,
         char *columns_name);
+int sorm_update(
+        const sorm_connection_t *conn, 
+        sorm_table_descriptor_t *table_desc);
 
 #endif

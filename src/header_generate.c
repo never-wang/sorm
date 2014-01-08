@@ -82,6 +82,43 @@ static void header_generate_define(
     sys_free(upper_table_name);
 }
 
+static void header_generate_init(
+        FILE *file, const sorm_table_descriptor_t* table_desc) {
+    int i;
+    char *upper_table_name;
+
+    upper_table_name = sys_malloc(strlen(table_desc->name) + 1);
+    case_lower2upper(table_desc->name, upper_table_name);
+    fprintf(file, 
+            "#define %s_INIT { %s_table_descriptor, \\\n"
+            INDENT, upper_table_name, table_desc->name);
+    
+    for (i = 0; i < table_desc->columns_num; i ++) {
+        fprintf(file, "%d, ", 0);
+        switch(table_desc->columns[i].type)
+        {
+            case SORM_TYPE_INT :
+            case SORM_TYPE_INT64 :
+            case SORM_TYPE_DOUBLE :
+                fprintf(file, "0, ");
+                break;
+            case SORM_TYPE_TEXT :
+            case SORM_TYPE_BLOB :
+                fprintf(file, "NULL, ");
+                break;
+            default :
+                error("Invalid SORM_TYPE.");
+                exit(0);
+        }
+    }
+    
+    fprintf(file, " }\n\n");
+
+    fprintf(file, "extern sorm_table_descriptor_t "
+            "%s_table_descriptor;\n\n", table_desc->name);
+    return;
+}
+
 static void header_generate_struct(
         FILE *file, const sorm_table_descriptor_t* table_desc)
 {
@@ -224,6 +261,13 @@ static void header_generate_func_save(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
     fprintf(file, "int %s_save(sorm_connection_t *conn, %s_t *%s);\n\n",
+            table_desc->name, table_desc->name, table_desc->name);
+}
+
+static void header_generate_func_update(
+        FILE *file, const sorm_table_descriptor_t *table_desc)
+{
+    fprintf(file, "int %s_update(sorm_connection_t *conn, %s_t *%s);\n\n",
             table_desc->name, table_desc->name, table_desc->name);
 }
 
@@ -480,7 +524,9 @@ void header_generate(
         return;
     }
 
+
     header_generate_define(file, table_desc);
+    header_generate_init(file, table_desc);
     /* typedef struct xxxx_s */
     header_generate_struct(file, table_desc);
     /* functions */
@@ -491,6 +537,7 @@ void header_generate(
     header_generate_func_create_table(file, table_desc);
     header_generate_func_delete_table(file, table_desc);
     header_generate_func_save(file, table_desc);
+    header_generate_func_update(file, table_desc);
     header_generate_func_set_mem(file, table_desc);
     header_generate_func_delete(file, table_desc);
     header_generate_func_select(file, table_desc);

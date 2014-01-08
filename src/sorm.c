@@ -1421,75 +1421,99 @@ int sorm_create_table(
         return SORM_ARG_NULL;
     }
 
-    ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1,
-            "CREATE TABLE IF NOT EXISTS %s(", table_desc->name);
-    if(ret < 0 || offset > SQL_STMT_MAX_LEN)
-    {
-        log_debug("snprintf error while constructing sql statment, "
-                "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
-        return SORM_TOO_LONG;
-    }
-
-    for(i = 0; i < table_desc->columns_num; i ++)
-    {
-        column_desc = &(table_desc->columns[i]);
-        ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
-                " %s %s", column_desc->name, 
-                sorm_type_db_str[column_desc->type]);
-        offset += ret;
+    if (table_desc->create_sql == NULL) {
+        ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1,
+                "CREATE TABLE IF NOT EXISTS %s(", table_desc->name);
         if(ret < 0 || offset > SQL_STMT_MAX_LEN)
         {
             log_debug("snprintf error while constructing sql statment, "
-                    "snprintf length(%d) > max length(%d)", 
-                    offset, SQL_STMT_MAX_LEN);
+                    "snprintf length(%d) > max length(%d)", offset, SQL_STMT_MAX_LEN);
             return SORM_TOO_LONG;
         }
 
-        switch(column_desc->constraint)
+        for(i = 0; i < table_desc->columns_num; i ++)
         {
-            case SORM_CONSTRAINT_PK :
-                ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
-                        " %s", "PRIMARY KEY,");
-                break;
-            case SORM_CONSTRAINT_PK_DESC :
-                ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
-                        " %s", "PRIMARY KEY DESC,");
-                break;
-            case SORM_CONSTRAINT_PK_ASC :
-                ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
-                        " %s", "PRIMARY KEY ASC,");
-                break;
-            case SORM_CONSTRAINT_UNIQUE :
-                ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
-                        " %s", "UNIQUE,");
-                break;
-            default :
-                ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1, 
-                        ",");
-                break;
-        }
-        offset += ret;
-        if(ret < 0 || offset > SQL_STMT_MAX_LEN)
-        {
-            log_debug("snprintf error while constructing sql "
-                    "statment, snprintf length(%d) > max length(%d)", 
-                    offset, SQL_STMT_MAX_LEN);
-            return SORM_TOO_LONG;
-        }
-    }
+            column_desc = &(table_desc->columns[i]);
+            ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
+                    " %s %s", column_desc->name, 
+                    sorm_type_db_str[column_desc->type]);
+            offset += ret;
+            if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+            {
+                log_debug("snprintf error while constructing sql statment, "
+                        "snprintf length(%d) > max length(%d)", 
+                        offset, SQL_STMT_MAX_LEN);
+                return SORM_TOO_LONG;
+            }
 
-    /* foreign key */
-    if((SORM_ENABLE_FOREIGN_KEY & conn->flags) == SORM_ENABLE_FOREIGN_KEY)
-    {
+            switch(column_desc->constraint)
+            {
+                case SORM_CONSTRAINT_PK :
+                    ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
+                            " %s", "PRIMARY KEY,");
+                    break;
+                case SORM_CONSTRAINT_PK_DESC :
+                    ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
+                            " %s", "PRIMARY KEY DESC,");
+                    break;
+                case SORM_CONSTRAINT_PK_ASC :
+                    ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
+                            " %s", "PRIMARY KEY ASC,");
+                    break;
+                case SORM_CONSTRAINT_UNIQUE :
+                    ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
+                            " %s", "UNIQUE,");
+                    break;
+                default :
+                    ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1, 
+                            ",");
+                    break;
+            }
+            offset += ret;
+            if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+            {
+                log_debug("snprintf error while constructing sql "
+                        "statment, snprintf length(%d) > max length(%d)", 
+                        offset, SQL_STMT_MAX_LEN);
+                return SORM_TOO_LONG;
+            }
+        }
+
+        /* foreign key */
+        if((SORM_ENABLE_FOREIGN_KEY & conn->flags) == SORM_ENABLE_FOREIGN_KEY)
+        {
+            for(i = 0; i < table_desc->columns_num; i ++)
+            {
+                column_desc = &(table_desc->columns[i]);
+                if(column_desc->is_foreign_key)
+                {
+                    ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
+                            " FOREIGN KEY(%s) REFERENCES %s(%s),",
+                            column_desc->name, column_desc->foreign_table_name, 
+                            column_desc->foreign_column_name);
+                    offset += ret;
+                    if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+                    {
+                        log_debug("snprintf error while constructing sql "
+                                "statment, snprintf length(%d) > max length(%d)", 
+                                offset, SQL_STMT_MAX_LEN);
+                        return SORM_TOO_LONG;
+                    }
+                }
+            }
+        }
+
+        sql_stmt[offset - 1] = ')';
+
         for(i = 0; i < table_desc->columns_num; i ++)
         {
             column_desc = &(table_desc->columns[i]);
             if(column_desc->is_foreign_key)
             {
                 ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
-                        " FOREIGN KEY(%s) REFERENCES %s(%s),",
-                        column_desc->name, column_desc->foreign_table_name, 
-                        column_desc->foreign_column_name);
+                        "; CREATE INDEX %s_index ON %s(%s)",
+                        column_desc->name, table_desc->name, 
+                        column_desc->name);
                 offset += ret;
                 if(ret < 0 || offset > SQL_STMT_MAX_LEN)
                 {
@@ -1500,32 +1524,13 @@ int sorm_create_table(
                 }
             }
         }
+        log_debug("prepare stmt : %s", sql_stmt);
+        ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
+    }else {
+        log_debug("prepare stmt : %s", table_desc->create_sql);
+        ret = _sqlite3_prepare(conn, table_desc->create_sql, &stmt_handle);
     }
 
-    sql_stmt[offset - 1] = ')';
-
-    for(i = 0; i < table_desc->columns_num; i ++)
-    {
-        column_desc = &(table_desc->columns[i]);
-        if(column_desc->is_foreign_key)
-        {
-            ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1,
-                    "; CREATE INDEX %s_index ON %s(%s)",
-                    column_desc->name, table_desc->name, 
-                    column_desc->name);
-            offset += ret;
-            if(ret < 0 || offset > SQL_STMT_MAX_LEN)
-            {
-                log_debug("snprintf error while constructing sql "
-                        "statment, snprintf length(%d) > max length(%d)", 
-                        offset, SQL_STMT_MAX_LEN);
-                return SORM_TOO_LONG;
-            }
-        }
-    }
-
-    log_debug("prepare stmt : %s", sql_stmt);
-    ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
 
     if(ret != SQLITE_OK)
     {
@@ -1835,7 +1840,8 @@ static inline int _check_has_value(sorm_table_descriptor_t *table_desc)
     return has_value;
 }
 /**
- * @brief: insert a new row or update a row in a table
+ * @brief: insert a new row or update a row in a table. for the update,
+ *      it will remove the existed row firest.
  *
  * @param desc: the descriptor for the table, and the data about the row
  *
@@ -3553,4 +3559,157 @@ DB_FINALIZE :
     }
     return ret_val;
 
+}
+
+int sorm_update(
+        const sorm_connection_t *conn, 
+        sorm_table_descriptor_t *table_desc) {
+    char sql_stmt[SQL_STMT_MAX_LEN + 1] = "";
+    sqlite3_stmt *stmt_handle = NULL;
+    int offset;
+    int ret, ret_val;
+    int i;
+    const sorm_column_descriptor_t *column_desc = NULL;
+    
+    if(table_desc == NULL)
+    {
+        log_error("Param desc is NULL");
+        return SORM_ARG_NULL;
+    }
+    
+    ret = _check_has_value(table_desc);
+    if(ret == 0)
+    {
+        log_debug("No member has value in this object");
+        return SORM_OK;
+    }
+    
+    column_desc = table_desc->columns;
+
+    /* sql statment : "DELETE FROM table_name WHERE"*/
+    ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1, 
+            "UPDATE %s SET", table_desc->name);
+    if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+    {
+        log_debug("snprintf error while constructing sql statment");
+        return SORM_TOO_LONG;
+    }
+
+    for(i = 0; i < table_desc->columns_num; i ++)
+    {
+        if(sorm_is_stat_valued(_get_column_stat(table_desc, i)))
+        {
+            ret = snprintf(sql_stmt + offset, 
+                    SQL_STMT_MAX_LEN - offset + 1, 
+                    " %s=?,", column_desc[i].name);
+            offset += ret;
+            if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+            {
+                log_debug(
+                        "snprintf error while constructing sql statment, "
+                        "snprintf length(%d) > max length(%d)", 
+                        offset, SQL_STMT_MAX_LEN);
+                return SORM_TOO_LONG;
+            }
+        }
+    }
+    offset --;
+    sql_stmt[offset] = '\0';
+    ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN + 1, 
+            " WHERE", table_desc->name);
+    offset += ret;
+    if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+    {
+        log_debug("snprintf error while constructing sql statment");
+        return SORM_TOO_LONG;
+    }
+    
+    for(i = 0; i < table_desc->columns_num; i ++)
+    {
+        if(sorm_is_unique_column(
+                    column_desc[i].constraint) &&
+                sorm_is_stat_valued(
+                    _get_column_stat(table_desc, i))) {
+            ret = snprintf(sql_stmt + offset, 
+                    SQL_STMT_MAX_LEN - offset + 1, 
+                    " %s=? AND", column_desc[i].name);
+            offset += ret;
+            if(ret < 0 || offset > SQL_STMT_MAX_LEN)
+            {
+                log_debug(
+                        "snprintf error while constructing sql statment, "
+                        "snprintf length(%d) > max length(%d)", 
+                        offset, SQL_STMT_MAX_LEN);
+                return SORM_TOO_LONG;
+            }
+        }
+    }
+    sql_stmt[offset - 4] = '\0';
+    
+    log_debug("prepare stmt : %s", sql_stmt);
+    ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
+
+    if(ret != SQLITE_OK)
+    {
+        log_debug("sqlite3_prepare error : %s", 
+                sqlite3_errmsg(conn->sqlite3_handle));
+        return SORM_DB_ERROR;
+    }
+    
+    int bind_index = 1;
+    for(i = 0; i < table_desc->columns_num; i ++)
+    {
+        if(sorm_is_stat_valued(_get_column_stat(table_desc, i)))
+        {
+            ret = _sqlite3_column_bind(
+                    conn, stmt_handle, table_desc, i, bind_index);
+            if(ret != SORM_OK)
+            {
+                log_debug("_sqlite3_column_bind error");
+                ret_val = ret;
+                goto DB_FINALIZE;
+            }
+            bind_index ++;
+        }
+    }
+    for(i = 0; i < table_desc->columns_num; i ++)
+    {
+        if(sorm_is_unique_column(column_desc[i].constraint) &&
+                sorm_is_stat_valued(
+                    _get_column_stat(table_desc, i))) {
+            ret = _sqlite3_column_bind(
+                    conn, stmt_handle, table_desc, i, bind_index);
+            if(ret != SORM_OK)
+            {
+                log_debug("_sqlite3_column_bind error");
+                ret_val = ret;
+                goto DB_FINALIZE;
+            }
+            bind_index ++;
+        }
+    }
+    
+    ret = _sqlite3_step(conn, stmt_handle);
+
+    if(ret != SQLITE_DONE)
+    {
+        log_debug("sqlite3_step error : %s", 
+                sqlite3_errmsg(conn->sqlite3_handle));
+        return SORM_DB_ERROR;
+    }
+
+    //log_debug("Success return");
+    ret_val = SORM_OK;
+
+DB_FINALIZE :
+    ret = _sqlite3_finalize(conn, stmt_handle);
+    if(ret != SQLITE_OK)
+    {
+        log_debug("sqlite3_finalize error : %s", 
+                sqlite3_errmsg(conn->sqlite3_handle));
+        return SORM_DB_ERROR;
+
+    }
+
+    return ret_val;
 }

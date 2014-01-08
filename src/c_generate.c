@@ -75,16 +75,18 @@ static void c_generate_column_desc(
 static void c_generate_device_desc(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
-    fprintf(file, "static sorm_table_descriptor_t "
+    fprintf(file, "sorm_table_descriptor_t "
             "%s_table_descriptor =\n{\n", table_desc->name);
 
     fprintf(file, INDENT "\"%s\",\n"                /* name */
             INDENT "SORM_SIZE(%s_t),\n"             /* size */   
             INDENT "%d,\n"                          /* columns_num */
             INDENT "%d,\n"                          /* Primary Key index */
+            INDENT "\"%s\",\n"                   /* create sql */
             INDENT "%s_columns_descriptor,\n",      /* columns */
             table_desc->name, table_desc->name, table_desc->columns_num,
-            table_desc->PK_index, table_desc->name);
+            table_desc->PK_index, table_desc->create_sql,
+            table_desc->name);
 
     fprintf(file, "};\n\n");
 }
@@ -184,6 +186,18 @@ static void c_generate_func_save(
             table_desc->name, table_desc->name, table_desc->name);
     fprintf(file, INDENT "return sorm_save"
             "(conn, (sorm_table_descriptor_t*)%s);\n", table_desc->name);
+    fprintf(file, "}\n\n");
+}
+
+static void c_generate_func_update(
+        FILE *file, const sorm_table_descriptor_t *table_desc)
+{
+    fprintf(file, 
+            "int %s_update(sorm_connection_t *conn, %s_t *%s)\n{\n",
+            table_desc->name, table_desc->name, table_desc->name);
+    fprintf(file, INDENT "return sorm_update"
+            "(conn, (sorm_table_descriptor_t*)%s);\n", 
+            table_desc->name);
     fprintf(file, "}\n\n");
 }
 
@@ -599,6 +613,7 @@ void c_generate(
     c_generate_func_create_table(file, table_desc, in_file_name);
     c_generate_func_delete_table(file, table_desc);
     c_generate_func_save(file, table_desc);
+    c_generate_func_update(file, table_desc);
     c_generate_func_set_mem(file, table_desc);
     c_generate_func_delete(file, table_desc);
     c_generate_func_select(file, table_desc);
