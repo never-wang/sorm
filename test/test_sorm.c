@@ -1321,9 +1321,6 @@ static void test_sorm_select_by_join()
     device_free(select_device);
     volume_free(select_volume);
 
-    device_free(device);
-    volume_free(volume);
-
     n = 0;
     ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
             DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
@@ -1332,6 +1329,58 @@ static void test_sorm_select_by_join()
     CU_ASSERT(n == 0);
     CU_ASSERT(select_device == NULL);
     CU_ASSERT(select_volume == NULL);
+    
+    ret = sorm_select_some_array_by_join(conn, ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
+            (sorm_table_descriptor_t**)&select_device, (sorm_table_descriptor_t**)&select_volume);
+
+    /* test select iterator */
+    sorm_iterator_t *iterator;
+    i = 0;
+    ret = sorm_select_iterate_by_join_open(conn, ALL_COLUMNS,
+            DESC__DEVICE, COLUMN__DEVICE__ID, 
+            DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, 
+            SORM_INNER_JOIN, NULL, &iterator);
+    assert(iterator != NULL);
+    CU_ASSERT(ret == SORM_OK);
+    while(1) {
+        sorm_select_iterate_by_join(iterator, &select_device, 
+                &select_volume);
+
+        if (!sorm_select_iterate_more(iterator)) {
+            break;
+        }
+    
+        char string[1024];
+        device_to_string(select_device, string, 1024);
+        log_debug("select : %s", string);
+        volume_to_string(select_volume, string, 1024);
+        log_debug("select : %s", string);
+        
+        CU_ASSERT(select_device->id == i % 3);
+        sprintf(device->uuid,"uuid-%d", i % 3);
+        CU_ASSERT(strcmp(device->uuid, select_device->uuid) == 0);
+        sprintf(device->name,"name-%d", i % 3);
+        CU_ASSERT(strcmp(device->name, select_device->name) == 0);
+        sprintf(device->password, "passwd-%d", i % 3);
+        CU_ASSERT(strcmp(device->password, select_device->password) == 0);
+
+        CU_ASSERT(select_volume->id == i);
+        CU_ASSERT(select_volume->device_id == i % 3);
+        sprintf(volume->uuid,"uuid-%d", i);
+        CU_ASSERT(strcmp(volume->uuid, select_volume->uuid) == 0);
+        sprintf(volume->drive,"drive-%d", i);
+        CU_ASSERT(strcmp(volume->drive, select_volume->drive) == 0);
+        sprintf(volume->label, "label-%d", i);
+        CU_ASSERT(strcmp(volume->label, select_volume->label) == 0);
+        device_free(select_device);
+        volume_free(select_volume);
+        i ++;
+    }
+    CU_ASSERT(i == 5);
+    sorm_select_iterate_close(iterator);
+    device_free(device);
+    volume_free(volume);
 
     for(i = 0; i < 3; i ++)
     {

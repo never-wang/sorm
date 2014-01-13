@@ -22,8 +22,8 @@ AC_SUBST(UTILS_DIR)
 
 AC_ARG_ENABLE(debug, 
     [AS_HELP_STRING([--enable-debug],[turns -g on and -O2 off[default = no]])], 
-    [[CFLAGS="-g"] 
-    [CFLAGS="-O2"]
+    [[CFLAGS+=" -g"] 
+    [CFLAGS+=" -O2"]
     AC_DEFINE([ENABLE_ZLOG], [], [enable zlog])
     AC_DEFINE_UNQUOTED([ZLOG_CONF], ["$PWD/src/zlog.conf"], [zlog config file path])])
 

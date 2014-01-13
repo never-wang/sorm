@@ -246,6 +246,22 @@ typedef struct sorm_connection_s
     //sqlite3_stmt *rollback_trans_stmt;
 } sorm_connection_t;
 
+/** @brief: used to store the information for selected columns in a table */
+typedef struct
+{
+    int columns_num;    /* the number of selected columns */
+    int *indexes_in_result;  /* the index of selected columns in result */
+}select_columns_t;
+
+typedef struct {
+    const sorm_connection_t *conn;
+    int tables_num;
+    int has_more;
+    const sorm_table_descriptor_t **tables_desc;
+    select_columns_t *select_columns_of_tables;
+    sqlite3_stmt *stmt_handle;
+}sorm_iterator_t;
+
 static const char* sorm_errorstr[] = 
 {
     "There is no error",        /* 0 - SORM_OK */
@@ -354,7 +370,7 @@ char* sorm_to_string(const sorm_table_descriptor_t *table_desc,
 /**
  * @brief: for the string with single quote, replace the single 
  * quote with two single quote. the len is used to prevent from
- * overflow
+ * overflow, string and fixed_string can point to the same buffer
  *
  * @param string: 
  * @param fixed_string:
@@ -625,5 +641,25 @@ int sorm_drop_index(
 int sorm_update(
         const sorm_connection_t *conn, 
         sorm_table_descriptor_t *table_desc);
+
+int sorm_select_iterate_by_join_open(
+        const sorm_connection_t *conn, const char *columns_name,
+        const sorm_table_descriptor_t *table1_desc, 
+        const char *table1_column_name,
+        const sorm_table_descriptor_t *table2_desc, 
+        const char *table2_column_name,
+        sorm_join_t join, const char *filter, 
+        sorm_iterator_t **iterator);
+
+int sorm_select_iterate_by_join(
+        sorm_iterator_t *iterator, 
+        sorm_table_descriptor_t **table1_row, 
+        sorm_table_descriptor_t **table2_row);
+
+int sorm_select_iterate_close(sorm_iterator_t *iterator);
+/**
+ * @brief: 1 means has more, else return 0
+ */
+int sorm_select_iterate_more(sorm_iterator_t *iterator);
 
 #endif

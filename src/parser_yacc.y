@@ -49,7 +49,7 @@ static sorm_list_t *sorm_list_entry = NULL;
 %%
 
 ROOT :
-     statement
+     statement 
      ;
 
 statement:
@@ -146,6 +146,11 @@ table_def :
               }
           }
       }
+      | UNIQUE LEFT_DASH unique_columns RIGHT_DASH
+
+unique_columns :
+      unique_columns COMMA NAME |
+      NAME
 %%
 
 int yyerror(char *msg)
