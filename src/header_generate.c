@@ -103,8 +103,10 @@ static void header_generate_init(
                 fprintf(file, "0, ");
                 break;
             case SORM_TYPE_TEXT :
-            case SORM_TYPE_BLOB :
                 fprintf(file, "NULL, ");
+                break;
+            case SORM_TYPE_BLOB :
+                fprintf(file, "0, NULL, ");
                 break;
             default :
                 error("Invalid SORM_TYPE.");
@@ -116,6 +118,15 @@ static void header_generate_init(
 
     fprintf(file, "extern sorm_table_descriptor_t "
             "%s_table_descriptor;\n\n", table_desc->name);
+    
+    fprintf(file, 
+            "static inline %s_init(%s_t *%s) {\n"
+            INDENT "bzero(%s, sizeof(%s_t)); \n"
+            INDENT "%s->table_desc = %s_table_descriptor; \n}\n\n", 
+            table_desc->name, table_desc->name, table_desc->name,
+            table_desc->name, table_desc->name, table_desc->name,
+            table_desc->name);
+    
     return;
 }
 
@@ -526,10 +537,10 @@ void header_generate(
 
 
     header_generate_define(file, table_desc);
-    header_generate_init(file, table_desc);
     /* typedef struct xxxx_s */
     header_generate_struct(file, table_desc);
     /* functions */
+    header_generate_init(file, table_desc);
     header_generate_func_to_string(file, table_desc);
     header_generate_func_get_desc(file, table_desc);
     header_generate_func_new(file, table_desc);

@@ -3854,7 +3854,7 @@ int _select_iterate_open(
     
     /* sqlite3_prepare */
     log_debug("prepare stmt : %s", sql_stmt);
-    //snprintf(last_stmt, SQL_STMT_MAX_LEN + 1, "%s\n", sql_stmt);
+    snprintf(last_stmt, SQL_STMT_MAX_LEN + 1, "%s\n", sql_stmt);
     ret = _sqlite3_prepare(
             conn, sql_stmt, &(iterator->stmt_handle));
     if(ret != SQLITE_OK)

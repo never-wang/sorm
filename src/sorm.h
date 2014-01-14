@@ -20,6 +20,7 @@
 #include <stddef.h>
 
 #include "sqlite3.h"
+#include "strings.h"
 
 /* open flags */
 #define SORM_ENABLE_FOREIGN_KEY        0x1 /* enable foreign key support in sqlite3 */
@@ -292,7 +293,8 @@ static inline const char* sorm_strerror(int error_code)
     return sorm_errorstr[error_code];
 }
 
-static inline const char* sorm_db_strerror(sorm_connection_t *conn)
+static inline const char* sorm_db_strerror(
+        const sorm_connection_t *conn)
 {
     return sqlite3_errmsg(conn->sqlite3_handle);
 }
