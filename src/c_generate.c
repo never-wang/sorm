@@ -161,7 +161,7 @@ static void c_generate_func_create_table(
     fprintf(file, "int %s_create_table(const sorm_connection_t *conn)\n{\n", 
             table_desc->name);
     fprintf(file, INDENT "char *sql_stmt = \"%s\";\n\n", sql_stmt);
-    fprintf(file, INDENT "return sorm_run_stmt(conn, sql_stmt);\n",
+    fprintf(file, INDENT "return sorm_run_stmt(conn, sql_stmt, SORM_RWLOCK_WRITE);\n",
             table_desc->name);
     fprintf(file, "}\n\n");
 

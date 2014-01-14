@@ -21,22 +21,20 @@
 #include "log.h"
 
 #define DB_FILE "test.db"
-#define SEM_KEY 1025
 
 pthread_cond_t cond_a = PTHREAD_COND_INITIALIZER;
 int condition_a = 0, condition_b = 0;
 pthread_cond_t cond_b = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_rwlock_t rwlock;
 
 void* pthread_a_work(void* args)
 {
     int ret, ret_val;
     sorm_connection_t *conn = (sorm_connection_t*)args;
-    ret = sorm_open(DB_FILE, SORM_DB_SQLITE, SEM_KEY,
-            SORM_ENABLE_SEMAPHORE, &conn);
+    ret = sorm_open(DB_FILE, SORM_DB_SQLITE, 0, &rwlock, 
+            SORM_ENABLE_RWLOCK, &conn);
     assert(ret == SORM_OK);
-    
-    sorm_run_stmt(conn, "BEGIN IMMEDIATE TRANSACTION");
     
     sqlite3_stmt *stmt_handle = NULL;
     
@@ -94,8 +92,6 @@ void* pthread_a_work(void* args)
     //log_debug("Success return");
     ret_val = SORM_OK;
     
-    sorm_run_stmt(conn, "ROLLBACK TRANSACTION");
-    
     pthread_mutex_lock(&mutex);
     condition_b = 1;
     pthread_mutex_unlock(&mutex);
@@ -119,15 +115,12 @@ void* pthread_b_work(void* args)
 {
     int ret, ret_val;
     sorm_connection_t *conn;
-    ret = sorm_open(DB_FILE, SORM_DB_SQLITE, SEM_KEY,
+    ret = sorm_open(DB_FILE, SORM_DB_SQLITE, 0, NULL, 
             SORM_ENABLE_SEMAPHORE, &conn);
     assert(ret == SORM_OK);
-
-    sorm_run_stmt(conn, "BEGIN IMMEDIATE TRANSACTION");
     
     sqlite3_stmt *stmt_handle = NULL;
     char *sql_stmt = "REPLACE INTO device ( id, uuid, name, password) VALUES ( 2, 'uuid-2', 'name-2', 'passwd')";
-    
     
     ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, SQL_STMT_MAX_LEN,
             &stmt_handle, NULL);
@@ -167,8 +160,6 @@ void* pthread_b_work(void* args)
     //log_debug("Success return");
     ret_val = SORM_OK;
     
-    sorm_run_stmt(conn, "COMMIT TRANSACTION");
-
 DB_FINALIZE :
     ret = sqlite3_finalize(stmt_handle);
     if(ret != SQLITE_OK)
@@ -190,8 +181,10 @@ int main()
     int ret;
 
     ret = sorm_init(0);
-    ret = sorm_open(DB_FILE, SORM_DB_SQLITE, SEM_KEY,
-            SORM_ENABLE_SEMAPHORE, &conn);
+    pthread_rwlock_init(&rwlock, NULL);
+
+    ret = sorm_open(DB_FILE, SORM_DB_SQLITE, 0, NULL, 
+            0, &conn);
     assert(ret == SORM_OK);
 
     ret = device_create_table(conn);

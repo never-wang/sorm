@@ -23,13 +23,24 @@
 #include "strings.h"
 
 /* open flags */
-#define SORM_ENABLE_FOREIGN_KEY        0x1 /* enable foreign key support in sqlite3 */
+#define SORM_ENABLE_FOREIGN_KEY      0x1 /* enable foreign key support in sqlite3 */
 #define SORM_ENABLE_SEMAPHORE        0x2    /* enable semaphore in sorm */
+/* enable rwlock in sorm, similar with rwlock, two kind of  transaction is provided in the mode,
+ * read_transaction alloc a rlock and begin a DEFERRED transaction,
+ * write_transaction alloc a wlock and begin a IMMEDIATE transaction.
+ * So each operation without a explicit transaction, the read operation will alloc a rlock,
+ * the write operation will alloc a wlock*/
+#define SORM_ENABLE_RWLOCK           0x4    
 
 #define sorm_foreign_key_enabled(flags) \
     ((SORM_ENABLE_FOREIGN_KEY & (flags)) == SORM_ENABLE_FOREIGN_KEY)
 #define sorm_semaphore_enabled(flags) \
     ((SORM_ENABLE_SEMAPHORE & (flags)) == SORM_ENABLE_SEMAPHORE)
+#define sorm_rwlock_enabled(flags) \
+    ((SORM_ENABLE_RWLOCK & (flags)) == SORM_ENABLE_RWLOCK)
+
+#define SORM_RWLOCK_READ    1
+#define SORM_RWLOCK_WRITE   2
 
 #define SORM_OFFSET(struct, member) offsetof(struct, member)
 #define SORM_SIZE(struct)    sizeof(struct)
@@ -237,11 +248,13 @@ typedef struct sorm_connection_s
 
     /* semaphore */
     int sem_key;
+    pthread_rwlock_t *rwlock;
 
     int flags;
 
     /* to store pre-prepared transaction statement */
-    sqlite3_stmt *begin_trans_stmt;
+    sqlite3_stmt *begin_read_trans_stmt;
+    sqlite3_stmt *begin_write_trans_stmt;
     sqlite3_stmt *commit_trans_stmt;
     /* remove it , because roolback should be fianlized immediately */
     //sqlite3_stmt *rollback_trans_stmt;
@@ -395,7 +408,8 @@ int sorm_fix_string(
  * @return: SORM_OK; SORM_ARG_NULL, SORM_NOMEM, SORM_DB_ERROR
  */
 int sorm_open(
-        const char *path, sorm_db_t db, int sem_key, int flags,
+        const char *path, sorm_db_t db, int sem_key,
+        pthread_rwlock_t *rwlock, int flags, 
         sorm_connection_t **connection);
 
 /**
@@ -416,7 +430,8 @@ int sorm_close(sorm_connection_t *conn);
  * @return: error code
  */
 int sorm_run_stmt(
-        const sorm_connection_t *conn, char *sql_stmt);
+        const sorm_connection_t *conn, char *sql_stmt, 
+        int rwlock_flag);
 /**
  * @brief: create a table in a database according the table's descriptor
  *
@@ -548,7 +563,8 @@ int sorm_select_all_list_by(
  *
  * @return: error code
  */
-int sorm_begin_transaction(sorm_connection_t *conn);
+int sorm_begin_write_transaction(sorm_connection_t *conn);
+int sorm_begin_read_transaction(sorm_connection_t *conn);
 /**
  * @brief: commit a transaction in a connection, do not support nest
  *

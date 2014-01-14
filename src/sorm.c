@@ -30,7 +30,7 @@
 #define _type_member_pointer(table_desc, offset, type) \
     ((type*)((char*)(table_desc) + (offset)))
 
-char last_stmt[SQL_STMT_MAX_LEN + 1];
+static char last_stmt[SQL_STMT_MAX_LEN + 1];
 
 /** @brief: type to string which is used in sql statement */
 static const char* sorm_type_db_str[] = 
@@ -165,6 +165,32 @@ static inline int _set_blob_len(
     (*(int*)((char*)table_desc + table_desc->columns[column_index].offset
              -sizeof(sorm_stat_t) - sizeof(int))) = len;
 }
+
+void _lock(const sorm_connection_t *conn, int rwlock_flag) {
+    int ret;
+    log_debug("flags : %d\n", conn->flags);
+    
+    if (sorm_semaphore_enabled(conn->flags) == 1) {
+        sem_p(conn->sem_key);
+    } else if (sorm_rwlock_enabled(conn->flags) == 1) {
+        if (rwlock_flag == SORM_RWLOCK_READ) {
+            ret = pthread_rwlock_rdlock(conn->rwlock);
+        } else {
+            ret = pthread_rwlock_wrlock(conn->rwlock);
+        }
+        assert(ret == 0);
+    }
+}
+
+void _unlock(const sorm_connection_t *conn) {
+    if (sorm_semaphore_enabled(conn->flags) == 1) {
+        sem_v(conn->sem_key);
+    } else if (sorm_rwlock_enabled(conn->flags) == 1) {
+        int ret = pthread_rwlock_unlock(conn->rwlock);
+        assert(ret == 0);
+    }
+}
+
 /**
  * @brief: call sqlite3_bind to bind a column value into a prepared statement
  *
@@ -440,16 +466,16 @@ static inline int _sqlite3_column(
 }
 
 static inline int  _sqlite3_step(
-        const sorm_connection_t *conn, sqlite3_stmt *stmt_handle)
+        const sorm_connection_t *conn, sqlite3_stmt *stmt_handle,
+        int rw_flag)
 {
     int ret;
     int retry_time = 0;
 
     assert(conn != NULL);
-    if((conn->transaction_num == 0) && 
-            (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
-    {
-        sem_p(conn->sem_key);
+    if (conn->transaction_num == 0) { 
+        /* no transaction */
+        _lock(conn, rw_flag);
     }
 
     /* although we use semaphore to prevent the happen of 
@@ -465,10 +491,9 @@ static inline int  _sqlite3_step(
                 retry_time);
     }
 
-    if((conn->transaction_num == 0) && 
-            (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
-    {
-        sem_v(conn->sem_key);
+    if (conn->transaction_num == 0) { 
+        /* no transaction */
+        _unlock(conn);
     }
 
     return ret;
@@ -480,12 +505,6 @@ static inline int _sqlite3_prepare(
     int ret;
     int retry_time = 0;
     assert(conn != NULL);
-
-    if((conn->transaction_num == 0) && 
-            (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
-    {
-        sem_p(conn->sem_key);
-    }
 
     do {
         ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
@@ -499,12 +518,6 @@ static inline int _sqlite3_prepare(
                 retry_time);
     }
 
-    if((conn->transaction_num == 0) && 
-            (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
-    {
-        sem_v(conn->sem_key);
-    }
-
     return ret;
 }
 
@@ -515,12 +528,6 @@ static inline int _sqlite3_finalize(
     int retry_time = 0;
     assert(conn != NULL);
 
-    if((conn->transaction_num == 0) && 
-            (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
-    {
-        sem_p(conn->sem_key);
-    }
-    
     do{
         ret = sqlite3_finalize(stmt_handle);
         retry_time ++;
@@ -530,12 +537,6 @@ static inline int _sqlite3_finalize(
     {
         log_info("sqlite_final succeed when retry %d times", 
                 retry_time);
-    }
-
-    if((conn->transaction_num == 0) && 
-            (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
-    {
-        sem_v(conn->sem_key);
     }
 
     return ret;
@@ -1136,39 +1137,29 @@ void sorm_set_allocator(void *memory_pool,
     mem_set_allocator(memory_pool, _alloc, _free, _strdup);
 }
 
-int sorm_init()
-{
-    if(log_init() != LOG_OK)
-    {
+int sorm_init() {
+    if(log_init() != LOG_OK) {
         printf("log init fail.\n");
         return SORM_INIT_FAIL;
     }
 
-    //if(sem_init() != SEM_OK)
-    //{
-    //    error("semaphore init fail.");
-    //    return SORM_INIT_FAIL;
-    //}
-
     return SORM_OK;
 }
 
-void sorm_final()
-{
+void sorm_final() {
     log_final();
     sem_final();
 }
 
 int sorm_fix_string(
-        const char *string, char *fixed_string, int len)
-{
+        const char *string, char *fixed_string, int len) {
     return _fix_string(string, fixed_string, len);
 }
 
 int sorm_open(
-        const char *path, sorm_db_t db, int sem_key, int flags,
-        sorm_connection_t **connection)
-{
+        const char *path, sorm_db_t db, int sem_key,
+        pthread_rwlock_t *rwlock, int flags, 
+        sorm_connection_t **connection) {
     sorm_connection_t *_connection = NULL;
     int ret, ret_val;
     sqlite3_stmt *stmt_handle = NULL;
@@ -1220,7 +1211,8 @@ int sorm_open(
             return SORM_DB_ERROR;
         }
 
-        ret = _sqlite3_step(_connection, stmt_handle);
+        ret = _sqlite3_step(_connection, stmt_handle, 
+                SORM_RWLOCK_WRITE);
 
         if(ret != SQLITE_DONE)
         {
@@ -1248,8 +1240,11 @@ int sorm_open(
     {
         _connection->sem_key = sem_key;
     }
-    _connection->flags = flags;
+    if(sorm_rwlock_enabled(flags)) {
+        _connection->rwlock = rwlock;
+    }
 
+    _connection->flags = flags;
     *connection = _connection;
 
     return SORM_OK;
@@ -1258,8 +1253,8 @@ int sorm_open(
     //log_debug("Success return");
 }
 
-int sorm_run_stmt(
-        const sorm_connection_t *conn, char *sql_stmt)
+int sorm_run_stmt(const sorm_connection_t *conn, char *sql_stmt, 
+        int rwlock_flag)
 {
     sqlite3_stmt *stmt_handle = NULL;
     int ret, ret_val;
@@ -1274,7 +1269,7 @@ int sorm_run_stmt(
         return SORM_DB_ERROR;
     }
 
-    ret = _sqlite3_step(conn, stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle, rwlock_flag);
 
     if(ret != SQLITE_DONE)
     {
@@ -1546,7 +1541,7 @@ int sorm_create_table(
         return SORM_DB_ERROR;
     }
 
-    ret = _sqlite3_step(conn, stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle, SORM_RWLOCK_WRITE);
 
     if(ret != SQLITE_DONE)
     {
@@ -1611,7 +1606,7 @@ int sorm_delete_table(
         return SORM_DB_ERROR;
     }
 
-    ret = _sqlite3_step(conn, stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle, SORM_RWLOCK_WRITE);
 
     if(ret != SQLITE_DONE)
     {
@@ -1969,7 +1964,7 @@ int sorm_save(
         }
     }
 
-    ret = _sqlite3_step(conn, stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle, SORM_RWLOCK_WRITE);
 
     if(ret != SQLITE_DONE)
     {
@@ -2101,7 +2096,7 @@ int sorm_delete(
         }
     }
 
-    ret = _sqlite3_step(conn, stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle, SORM_RWLOCK_WRITE);
 
     if(ret != SQLITE_DONE)
     {
@@ -2226,7 +2221,7 @@ int sorm_delete_by(
         return SORM_DB_ERROR;
     }
 
-    ret = _sqlite3_step(conn, stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle, SORM_RWLOCK_WRITE);
 
     if(ret != SQLITE_DONE)
     {
@@ -2502,7 +2497,8 @@ int _select_some_array_core(
     step_ret = SQLITE_DONE; //init to SQLITE_DONE, for row_numbe can ben zero
     while((*rows_num) < max_rows_num)
     {
-        step_ret = _sqlite3_step(conn, stmt_handle);
+        step_ret = _sqlite3_step(conn, stmt_handle, 
+                SORM_RWLOCK_READ);
         if(step_ret == SQLITE_ROW)
         {
             //a new row
@@ -2603,7 +2599,8 @@ int _select_some_list_core(
     step_ret = SQLITE_DONE; //init to SQLITE_DONE, for row_numbe can ben zero
     while((*rows_num) < max_rows_num)
     {
-        step_ret = _sqlite3_step(conn, stmt_handle);
+        step_ret = _sqlite3_step(conn, stmt_handle, 
+                SORM_RWLOCK_READ);
         if(step_ret == SQLITE_ROW)
         {
             //a new row
@@ -2711,7 +2708,7 @@ int _select_all_list_core(
 
     while(1)
     {
-        ret = _sqlite3_step(conn, stmt_handle);
+        ret = _sqlite3_step(conn, stmt_handle, SORM_RWLOCK_READ);
         if(ret == SQLITE_ROW)
         {
             //a new row
@@ -3093,13 +3090,13 @@ int sorm_select_all_list_by_join(
     return ret;
 }
 
-
-int sorm_begin_transaction(sorm_connection_t *conn)
-{
-    sqlite3_stmt *stmt_handle = NULL;
-    char sql_stmt[SQL_STMT_MAX_LEN + 1] = "";
+int sorm_begin_transaction(
+        sorm_connection_t *conn, sqlite3_stmt **stmt_handle, 
+        char *sql_stmt, int rwlock_flag) {
+    sqlite3_stmt *_stmt_handle = NULL;
     int offset;
     int ret, ret_val;
+    sqlite3_stmt *begin_trans_stmt = NULL;
 
     if(conn == NULL)
     {
@@ -3110,46 +3107,28 @@ int sorm_begin_transaction(sorm_connection_t *conn)
 
     if(conn->transaction_num == 0) /* first transaction */
     {
-        if(sorm_semaphore_enabled(conn->flags) == 1)
-        {
-            sem_p(conn->sem_key);
-        }
-        if(conn->begin_trans_stmt == NULL)
-        {
-            ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1, 
-                    "BEGIN TRANSACTION");
-            if(ret < 0 || offset > SQL_STMT_MAX_LEN)
-            {
-                log_debug("snprintf error while constructing sql "
-                        "statment, snprintf length(%d) > max length(%d)", 
-                        offset, SQL_STMT_MAX_LEN);
-                return SORM_TOO_LONG;
-            }
-
+        _lock(conn, rwlock_flag);
+        if((*stmt_handle) == NULL) {
+            sqlite3_stmt *_stmt_handle;
             log_debug("prepare stmt : %s", sql_stmt);
             ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
-                    SQL_STMT_MAX_LEN, &stmt_handle, NULL);
+                    SQL_STMT_MAX_LEN, &_stmt_handle, NULL);
 
-            if(ret != SQLITE_OK)
-            {
+            if(ret != SQLITE_OK) {
                 log_debug("sqlite3_prepare error : %s", 
                         sqlite3_errmsg(conn->sqlite3_handle));
                 return SORM_DB_ERROR;
             }
-
-            conn->begin_trans_stmt = stmt_handle;
-        }else
-        {
-            stmt_handle = conn->begin_trans_stmt;
+            *stmt_handle = _stmt_handle;
         }
 
-        ret = sqlite3_step(stmt_handle);
+        ret = sqlite3_step(*stmt_handle);
 
-        if(ret != SQLITE_DONE)
-        {
+        if(ret != SQLITE_DONE) {
             log_debug("sqlite3_step error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             ret_val = SORM_DB_ERROR;
+            goto DB_FINALIZE;
         }
 
         ret_val = SORM_OK;
@@ -3167,6 +3146,18 @@ DB_FINALIZE :
         //log_debug("Success return");
         return SORM_OK;
     }
+}
+
+int sorm_begin_write_transaction(sorm_connection_t *conn) {
+    return sorm_begin_transaction(
+            conn, &conn->begin_write_trans_stmt, 
+            "BEGIN IMMEDIATE TRANSACTION", SORM_RWLOCK_WRITE);
+}
+
+int sorm_begin_read_transaction(sorm_connection_t *conn) {
+    return sorm_begin_transaction(
+            conn, &conn->begin_read_trans_stmt, 
+            "BEGIN DEFERRED TRANSACTION", SORM_RWLOCK_READ);
 }
 
 int sorm_commit_transaction(sorm_connection_t *conn)
@@ -3219,17 +3210,15 @@ int sorm_commit_transaction(sorm_connection_t *conn)
         }
 
         ret = sqlite3_step(stmt_handle);
-        if(sorm_semaphore_enabled(conn->flags) == 1)
-        {
-            sem_v(conn->sem_key);
-        }
 
         if(ret != SQLITE_DONE)
         {
             log_debug("sqlite3_step error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             ret_val = SORM_DB_ERROR;
+            goto DB_FINALIZE;
         }
+        _unlock(conn);
 
         ret_val = SORM_OK;
 
@@ -3296,17 +3285,15 @@ int sorm_rollback_transaction(sorm_connection_t *conn)
             log_debug("sqlite3_step error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             ret_val = SORM_DB_ERROR;
+            goto DB_FINALIZE;
         }
 
         ret_val = SORM_OK;
 
 DB_FINALIZE :
         ret = _sqlite3_finalize(conn, stmt_handle);
-        
-        if(sorm_semaphore_enabled(conn->flags) == 1)
-        {
-            sem_v(conn->sem_key);
-        }
+        _unlock(conn);
+        conn->transaction_num --; //always --
 
         if(ret != SQLITE_OK)
         {
@@ -3316,11 +3303,6 @@ DB_FINALIZE :
 
         }
 
-        if(ret_val == SORM_OK)
-        {
-            conn->transaction_num --; //only -- when success return
-            //log_debug("Success return");
-        }
         return ret_val;
     }else
     {
@@ -3342,16 +3324,27 @@ int sorm_close(sorm_connection_t *conn)
 
     //log_debug("Start");
     //finalize pre-prepared stmt
-    if(conn->begin_trans_stmt != NULL)
+    if(conn->begin_read_trans_stmt != NULL)
     {
-        ret = sqlite3_finalize(conn->begin_trans_stmt);
+        ret = sqlite3_finalize(conn->begin_read_trans_stmt);
         if(ret != SQLITE_OK)
         {
             log_debug("sqlite3_finalize error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             return SORM_DB_ERROR;
         }
-        conn->begin_trans_stmt = NULL;
+        conn->begin_read_trans_stmt = NULL;
+    }
+    if(conn->begin_write_trans_stmt != NULL)
+    {
+        ret = sqlite3_finalize(conn->begin_write_trans_stmt);
+        if(ret != SQLITE_OK)
+        {
+            log_debug("sqlite3_finalize error : %s", 
+                    sqlite3_errmsg(conn->sqlite3_handle));
+            return SORM_DB_ERROR;
+        }
+        conn->begin_write_trans_stmt = NULL;
     }
     if(conn->commit_trans_stmt != NULL)
     {
@@ -3468,7 +3461,7 @@ int sorm_create_index(
         return SORM_DB_ERROR;
     }
 
-    ret = _sqlite3_step(conn, stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle, SORM_RWLOCK_WRITE);
 
     if(ret != SQLITE_DONE)
     {
@@ -3543,7 +3536,7 @@ int sorm_drop_index(
         return SORM_DB_ERROR;
     }
 
-    ret = _sqlite3_step(conn, stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle, SORM_RWLOCK_WRITE);
 
     if(ret != SQLITE_DONE)
     {
@@ -3698,7 +3691,7 @@ int sorm_update(
         }
     }
     
-    ret = _sqlite3_step(conn, stmt_handle);
+    ret = _sqlite3_step(conn, stmt_handle, SORM_RWLOCK_WRITE);
 
     if(ret != SQLITE_DONE)
     {
@@ -3942,7 +3935,8 @@ int _select_iterate(
     iterator->has_more = 0;
     log_debug("%d : %d", conn->transaction_num,
             conn->flags);
-    int step_ret = _sqlite3_step(conn, stmt_handle);
+    int step_ret = _sqlite3_step(
+            conn, stmt_handle, SORM_RWLOCK_WRITE);
     if(step_ret == SQLITE_ROW) {
         //a new row
         /* get data of the row for table1*/

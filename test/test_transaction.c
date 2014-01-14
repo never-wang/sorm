@@ -42,7 +42,7 @@ int main()
         return -1;
     }
 
-    ret = sorm_open(DB_FILE, SORM_DB_SQLITE, SEM_KEY,
+    ret = sorm_open(DB_FILE, SORM_DB_SQLITE, SEM_KEY, NULL, 
             0, &conn);
 
     if(ret != SORM_OK)
