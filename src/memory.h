@@ -62,7 +62,7 @@ static inline char *_strdup(
     }
     if (buf == NULL) {
         error("Not enough memory.");
-        exist(-1);
+        exit(-1);
     }
 }
 

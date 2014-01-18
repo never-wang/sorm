@@ -3855,21 +3855,20 @@ int _select_iterate_open(
 
     return ret_val;
 RETURN :
+    /* fail return , free memory */
     if (iterator != NULL) {
         if(iterator->select_columns_of_tables != NULL) {
             for(i = 0; i < tables_num; i ++) {
                 if(iterator->select_columns_of_tables[i].
-                        indexes_in_result != NULL) 
-                {
-                    sorm_free(allocator, iterator->
+                        indexes_in_result != NULL) {
+                    _free(NULL, iterator->
                             select_columns_of_tables[i].
                             indexes_in_result);
                 }
             }
-            sorm_free(allocator, 
-                    iterator->select_columns_of_tables);
+            _free(NULL, iterator->select_columns_of_tables);
         }
-        sorm_free(allocator, iterator);
+        _free(NULL, iterator);
     }
 
     return ret_val;
