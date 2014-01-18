@@ -27,7 +27,6 @@ AC_ARG_ENABLE(debug,
     AC_DEFINE([ENABLE_ZLOG], [], [enable zlog])
     AC_DEFINE_UNQUOTED([ZLOG_CONF], ["$PWD/src/zlog.conf"], [zlog config file path])])
 
-
 AC_CONFIG_FILES([Makefile src/Makefile third-part/Makefile
                  third-part/zlog-1.2.1/Makefile 
                  third-part/sqlite3/Makefile

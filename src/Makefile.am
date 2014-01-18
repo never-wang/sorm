@@ -1,5 +1,5 @@
 lib_LTLIBRARIES = libsorm.la
-libsorm_la_SOURCES = sorm.c sorm.h memory.c memory.h log.c log.h semaphore.c semaphore.h
+libsorm_la_SOURCES = sorm.c sorm.h log.c log.h semaphore.c semaphore.h
 
 libsorm_la_LIBADD = $(ZLOG_DIR)/libzlog.la $(SQLITE_DIR)/libsqlite.la
 libsorm_la_CFLAGS = -I$(ZLOG_DIR) -I$(SQLITE_DIR)

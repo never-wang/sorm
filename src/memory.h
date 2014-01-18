@@ -13,24 +13,59 @@
  ***************************************************************************/
 #ifndef MEMORY_H
 #define MEMORY_H
+#include <stdlib.h>
+#include <string.h>
 
-/** @brief: allocator  */
-typedef struct mem_allocator_s
-{
-    void*(*_alloc)(void *memory_pool, size_t size);
-    void(*_free)(void *memory_pool, void *point);
-    char*(*_strdup)(void *memory_pool, const char *string);
+#include "sorm.h"
 
-    void *memory_pool;
-}mem_allocator_t;
+static inline void* _malloc(
+        const sorm_allocator_t *allocator, size_t size) {
+    void *buf;
 
-/* usr define allocator, used for new and select */
-void* usr_malloc(size_t size);
-void usr_free(void *ptr);
-char* usr_strdup(const char *str);
-/* system allocator, used to malloc self used memory */
-void* sys_malloc(size_t size);
-void sys_free(void *ptr);
-char* sys_strdup(const char *str);
+    if(size == 0) {
+        return NULL;
+    }
+
+    if (allocator == NULL) {
+        buf = malloc(size);
+    } else {
+        buf = allocator->_alloc(allocator->memory_pool, size);
+    }
+    if(buf == NULL) {
+        error("Not enough memory.");
+        exit(-1);
+    }
+    return buf;
+}
+
+static inline void _free(
+        const sorm_allocator_t *allocator, void *ptr) {
+    if (allocator == NULL) {
+        free(ptr);
+    } else {
+        allocator->_free(allocator->memory_pool, ptr);
+    }
+}
+
+static inline char *_strdup(
+        const sorm_allocator_t *allocator, const char *str) {
+    char *buf;
+
+    if (str == NULL) {
+        return NULL;
+    }
+
+    if (allocator == NULL) {
+        buf = strdup(str);
+    }else {
+        buf = allocator->_strdup(allocator->memory_pool, str);
+    }
+    if (buf == NULL) {
+        error("Not enough memory.");
+        exit(-1);
+    }
+    
+    return buf;
+}
 
 #endif

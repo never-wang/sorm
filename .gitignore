@@ -42,3 +42,9 @@ test/volume_sorm.h
 *.out
 test/test_transaction
 test/db_test
+src/sync.sh
+test/index_sorm.c
+test/index_sorm.h
+test/pthread.db-journal
+test/test_pthread_transaction
+test/test_sorm.h

@@ -18,7 +18,9 @@
 #include "sorm.h"
 #include "device_sorm.h"
 #include "volume_sorm.h"
+#include "test_index_sorm.h"
 #include "log.h"
+#include "times.h"
 
 #define DB_FILE "test.db"
 
@@ -174,6 +176,25 @@ DB_FINALIZE :
 
 }
 
+static void  _device_get_all(sorm_connection_t *conn) {
+    sorm_iterator_t *iterator;
+    device_t *device;
+    int ret = device_select_iterate_by_open(conn, ALL_COLUMNS,
+            NULL, &iterator);
+    while (1) {
+        device_select_iterate_by(iterator, &device);
+        if (!device_select_iterate_more(iterator)) {
+            break;
+        }
+        char string[1024];
+        printf("select : %s\n", 
+                device_to_string(device, string, 1024));
+        device_free(device);
+    }
+    device_select_iterate_close(iterator);
+
+}
+
 int main()
 {
     sorm_connection_t *conn;
@@ -187,37 +208,83 @@ int main()
             0, &conn);
     assert(ret == SORM_OK);
 
-    ret = device_create_table(conn);
+    ret = test_index_create_table(conn);
+    //ret = test_index_create_index(conn, "uuid");
     assert(ret == SORM_OK);
-    //ret = volume_create_table(conn);
-    //assert(ret == SORM_OK);
+    //ret = test_index_create_index(conn, "name");
+    //test_index_create_test_index(conn, COLUMN__DEVICE__SMALL_NUM);
+    assert(ret == SORM_OK);
 
-    //volume = volume_new();
-    //volume_set_id(volume, 1);
-    //volume_set_uuid(volume, "uuid-1");
-    //ret = volume_save(conn, volume);
-    //assert(ret == SORM_OK);
-
-    ret = pthread_create(&p1, NULL, pthread_a_work, (void*)conn);
-    assert(ret == 0);
-    ret = pthread_create(&p2, NULL, pthread_b_work, (void*)conn);
-    assert(ret == 0);
-
-    pthread_join(p1, NULL);
-    pthread_join(p2, NULL);
-    
-#define DB_STRING_MAX_LEN 1024
-    char string[DB_STRING_MAX_LEN];
-    device_t *device;
-    int num, i;
-    ret = device_select_all_array_by(conn, ALL_COLUMNS, NULL, &num,  
-            &device);
-    for (i = 0; i < num; i ++) {
-        log_debug("%s", device_to_string(&device[i], string, 
-                    DB_STRING_MAX_LEN));
+#define UPDATE_NUM 100000
+    test_index_t *test_index = test_index_new();
+    int i;
+    sorm_begin_write_transaction(conn);
+    for (i = 0; i < UPDATE_NUM; i ++) {
+        test_index->id = i;
+        test_index->id_stat = SORM_STAT_VALUED;
+        sprintf(test_index->uuid,"uuid-%d", 1);
+        test_index->uuid_stat = SORM_STAT_VALUED;
+        sprintf(test_index->name,"name-%d", i);
+        test_index->name_stat = SORM_STAT_VALUED;
+        ret = test_index_save(conn, test_index);
+        assert(ret == SORM_OK);
     }
+    sorm_commit_transaction(conn);
 
-    ret = device_delete_table(conn);
+    times_init();
+
+    //_test_index_get_all(conn);
+    times_start();
+    int num;
+    for (i = 0; i < 1000; i ++) {
+        ret = test_index_select_all_array_by(conn, ALL_COLUMNS, "name = 'name-1' AND uuid = 'uuid-1'", &num, &test_index);
+        assert(ret == SORM_OK);
+        assert(num == 1);
+    }
+    printf("timee : %f\n", times_end());
+    
+    //times_start();
+    //for (i = 0; i < 1000; i ++) {
+    //    ret = test_index_select_all_array_by(conn, ALL_COLUMNS, "name = 'name-1'", &num, &test_index);
+    //    assert(ret == SORM_OK);
+    //    assert(num == 1);
+    //}
+    //printf("timee : %f\n", times_end());
+        //sqlite3_stmt *stmt_handle = NULL;
+        //char sql_stmt[1024];
+        //snprintf(sql_stmt, 1024, "UPDATE device SET small_num = 2 WHERE id = %d", i);
+        //ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, SQL_STMT_MAX_LEN,
+        //        &stmt_handle, NULL);
+
+        //if(ret != SQLITE_OK)
+        //{
+        //    log_debug("sqlite3_prepare error : %s", 
+        //            sqlite3_errmsg(conn->sqlite3_handle));
+        //    return 0;
+        //}
+
+        //ret = sqlite3_step(stmt_handle);
+        //if(ret != SQLITE_DONE)
+        //{
+        //    log_debug("sqlite3_step error : %s", 
+        //            sqlite3_errmsg(conn->sqlite3_handle));
+        //    return SORM_DB_ERROR;
+        //}
+
+        //assert(sqlite3_changes(conn->sqlite3_handle) == 1);
+
+        //ret = sqlite3_finalize(stmt_handle);
+        //if(ret != SQLITE_OK)
+        //{
+        //    log_debug("sqlite3_finalize error : %s", 
+        //            sqlite3_errmsg(conn->sqlite3_handle));
+        //    return -1;
+        //}
+
+    //printf("use time : %f\n", times_end());
+
+    //_device_get_all(conn);
+    ret = test_index_delete_table(conn);
     assert(ret == SORM_OK);
     //ret = volume_delete_table(conn);
     //assert(ret == SORM_OK);

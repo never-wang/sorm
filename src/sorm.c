@@ -16,19 +16,20 @@
 #include <string.h>
 
 #include "sorm.h"
-#include "memory.h"
 #include "log.h"
 #include "semaphore.h"
 #include "generate.h"
+#include "memory.h"
 
-#define _list_cpy_free(desc, head, n, rows, free) \
-    __list_cpy_free(desc, head, n, rows, (void*)(free))
+#define _list_cpy_free(allocator, desc, head, n, rows) \
+    __list_cpy_free(allocator, desc, head, n, rows)
 #define _heap_member_pointer(table_desc, member_offset) \
     *(char **)((char*)(table_desc) + (member_offset))
 #define _stack_member_pointer(table_desc, member_offset) \
     ((char*)(table_desc) + (member_offset))
 #define _type_member_pointer(table_desc, offset, type) \
     ((type*)((char*)(table_desc) + (offset)))
+
 
 static char last_stmt[SQL_STMT_MAX_LEN + 1];
 
@@ -41,26 +42,25 @@ static const char* sorm_type_db_str[] =
     "REAL",       /* 2 - SORM_TYPE_DOUBLE */
     "BLOB",       /* 3 - SORM_TYPE_BLOB */
 };
-typedef int(*select_core_t)(const sorm_connection_t*, sqlite3_stmt*, 
-        int, const sorm_table_descriptor_t**, const int*, const select_columns_t*,
-        int, int *, void **);
+typedef int(*select_core_t)(
+        const sorm_connection_t*, const sorm_allocator_t*, 
+        sqlite3_stmt*, int, const sorm_table_descriptor_t**, 
+        const int*, const select_columns_t*, int, int *, void **);
 
-void _list_free(sorm_list_t *sorm_list, void (*data_free)(void*))
-{
+void _list_free(const sorm_allocator_t *allocator,
+        sorm_list_t *sorm_list, 
+        void (*data_free)(const sorm_allocator_t*, void*)) {
     sorm_list_t *pos, *pre;
 
     //log_debug("Start.");
-    if(sorm_list != NULL)
-    {
-        sorm_list_for_each_safe(pos, pre, sorm_list)
-        {
-            if(data_free != NULL)
-            {
-                data_free(pos->data);
+    if(sorm_list != NULL) {
+        sorm_list_for_each_safe(pos, pre, sorm_list) {
+            if(data_free != NULL) {
+                data_free(allocator, pos->data);
             }
-            usr_free(pos);
+            _free(allocator, pos);
         }
-        usr_free(sorm_list);
+        _free(allocator, sorm_list);
     }
     //log_debug("Success return.");
 }
@@ -69,10 +69,10 @@ void _list_free(sorm_list_t *sorm_list, void (*data_free)(void*))
  * @brief: copy data in a list into an array of rows, and free the list
  */
 static inline void __list_cpy_free(
+        const sorm_allocator_t *allocator,
         const sorm_table_descriptor_t *table_desc,
-        sorm_list_t *sorm_list, int n, sorm_table_descriptor_t *rows,
-        void(*data_free)(void*))
-{
+        sorm_list_t *sorm_list, int n, 
+        sorm_table_descriptor_t *rows) { 
     int i = 0;
     sorm_list_t *pos, *scratch;
 
@@ -86,15 +86,12 @@ static inline void __list_cpy_free(
         log_debug("List get(%d)", i);
         memcpy((char *)rows + table_desc->size * i, pos->data, table_desc->size);
         i ++;
-        if(data_free != NULL)
-        {
-            data_free(pos->data);
-        }
-        usr_free(pos);
+        sorm_free(allocator, pos->data);
+        _free(allocator, pos);
     }
 
     assert(i == n);
-    usr_free(sorm_list);
+    _free(allocator, sorm_list);
     //log_debug("Success return");
 }
 
@@ -168,8 +165,7 @@ static inline int _set_blob_len(
 
 void _lock(const sorm_connection_t *conn, int rwlock_flag) {
     int ret;
-    log_debug("flags : %d\n", conn->flags);
-    
+
     if (sorm_semaphore_enabled(conn->flags) == 1) {
         sem_p(conn->sem_key);
     } else if (sorm_rwlock_enabled(conn->flags) == 1) {
@@ -341,7 +337,9 @@ static inline void trim(char **str_p, char *str_end)
  * @return:  error code
  */
 static inline int _sqlite3_column(
-        sorm_table_descriptor_t *table_desc, sqlite3_stmt *stmt_handle,
+        const sorm_allocator_t *allocator, 
+        sorm_table_descriptor_t *table_desc, 
+        sqlite3_stmt *stmt_handle,
         int column_index, int result_index)
 {
     int ret, offset;
@@ -378,7 +376,8 @@ static inline int _sqlite3_column(
         case SORM_TYPE_TEXT :
             if(column_desc->mem == SORM_MEM_HEAP)
             {
-                text = usr_strdup((char *)sqlite3_column_text(
+                text = _strdup(allocator, 
+                        (const char *)sqlite3_column_text(
                             stmt_handle, result_index));
                 _heap_member_pointer(table_desc, column_desc->offset) = text; 
                 _add_column_stat(table_desc, column_index, 
@@ -420,7 +419,7 @@ static inline int _sqlite3_column(
                 blob_len = sqlite3_column_bytes(stmt_handle, result_index);
                 if(blob_len != 0)
                 {
-                    blob = usr_malloc(blob_len);
+                    blob = _malloc(allocator, blob_len);
                     if(blob == NULL)
                     {
                         log_error("malloc for blob fail");
@@ -508,7 +507,7 @@ static inline int _sqlite3_prepare(
 
     do {
         ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
-            SQL_STMT_MAX_LEN, stmt_handle, NULL);
+                SQL_STMT_MAX_LEN, stmt_handle, NULL);
         retry_time ++;
     }while((ret == SQLITE_BUSY) && (retry_time < BUSY_RETRY_TIME));
 
@@ -532,7 +531,7 @@ static inline int _sqlite3_finalize(
         ret = sqlite3_finalize(stmt_handle);
         retry_time ++;
     }while((ret == SQLITE_BUSY) && (retry_time < BUSY_RETRY_TIME));
-    
+
     if(retry_time > 1)
     {
         log_info("sqlite_final succeed when retry %d times", 
@@ -567,7 +566,7 @@ static inline int _get_number_from_columns_name(
     assert(columns_name != NULL);
     assert(columns_num != NULL);
 
-    column_name = _columns_name = sys_strdup(columns_name);
+    column_name = _columns_name = _strdup(NULL, columns_name);
     //column_name used to find column_name, _columns_name used for free
     if(column_name == NULL)
     {
@@ -652,7 +651,7 @@ static inline int _get_number_from_columns_name(
 
     }while(delimiter != NULL);
 
-    sys_free(_columns_name);
+    _free(NULL, _columns_name);
 
     for(i = 0; i < tables_num; i ++)
     {
@@ -792,9 +791,10 @@ static inline int _column_name_to_index_in_tables(
  * @return: 
  */
 static inline int _columns_name_to_select_columns(
-        int tables_num, const sorm_table_descriptor_t **tables_desc, 
-        const char *columns_name, select_columns_t *select_columns_of_table)
-{
+        int tables_num, 
+        const sorm_table_descriptor_t **tables_desc, 
+        const char *columns_name, 
+        select_columns_t *select_columns_of_table) {
     char* delimiter;
     char *column_name = NULL, *_columns_name = NULL;
     int i, j, 
@@ -809,7 +809,7 @@ static inline int _columns_name_to_select_columns(
     //log_debug("Start.");
     //
 
-    column_name = _columns_name = sys_strdup(columns_name);
+    column_name = _columns_name = _strdup(NULL, columns_name);
     if(column_name == NULL)
     {
         log_debug("sys_strdup for columns_name fail");
@@ -898,7 +898,7 @@ static inline int _columns_name_to_select_columns(
 RETURN :
     if(_columns_name != NULL)
     {
-        sys_free(_columns_name);
+        _free(NULL, _columns_name);
         _columns_name = NULL;
     }
 
@@ -916,14 +916,13 @@ RETURN :
  * @return: error code
  */
 static inline int _parse_select_result(
-        const sorm_connection_t *conn,
+        const sorm_allocator_t *allocator, 
         sqlite3_stmt *stmt_handle,
         const int *column_indexes_in_result,
         sorm_table_descriptor_t *row)
 {
     int i, ret;
 
-    assert(conn != NULL);
     assert(row != NULL);
     assert(column_indexes_in_result != NULL);
     assert(row != NULL);
@@ -934,7 +933,7 @@ static inline int _parse_select_result(
     {
         if(column_indexes_in_result[i] != NO_INDEXES_IN_RESULT)
         {
-            ret = _sqlite3_column(row, stmt_handle, 
+            ret = _sqlite3_column(allocator, row, stmt_handle, 
                     i, column_indexes_in_result[i]); 
             if(ret != SORM_OK)
             {
@@ -1032,7 +1031,7 @@ static inline int _construct_column_filter(
             break;
         case SORM_TYPE_TEXT :
             if ((ret = _fix_string(column_value, fixed_buf, 
-                        SQL_STMT_MAX_LEN + 1)) != SORM_OK) {
+                            SQL_STMT_MAX_LEN + 1)) != SORM_OK) {
                 return ret;
             }
             offset = snprintf(filter, SQL_STMT_MAX_LEN + 1, "%s = '%s'", 
@@ -1129,14 +1128,6 @@ static inline int _construct_filter_stmt(
     return SORM_OK;
 }
 
-void sorm_set_allocator(void *memory_pool, 
-        void*(*_alloc)(void *memory_pool, size_t size), 
-        void(*_free)(void *memory_pool, void *point), 
-        char*(*_strdup)(void *memory_pool, const char *string))
-{
-    mem_set_allocator(memory_pool, _alloc, _free, _strdup);
-}
-
 int sorm_init() {
     if(log_init() != LOG_OK) {
         printf("log init fail.\n");
@@ -1174,10 +1165,10 @@ int sorm_open(
 
     log_debug("open db path(%s)", path);
 
-    _connection = usr_malloc(sizeof(sorm_connection_t));
+    _connection = _malloc(NULL, sizeof(sorm_connection_t));
     if(_connection == NULL)
     {
-        log_debug("usr_malloc for _connection fail");
+        log_debug("sorm_malloc for _connection fail");
         return SORM_NOMEM;
     }
 
@@ -1258,7 +1249,7 @@ int sorm_run_stmt(const sorm_connection_t *conn, char *sql_stmt,
 {
     sqlite3_stmt *stmt_handle = NULL;
     int ret, ret_val;
-    
+
     log_debug("prepare stmt : %s", sql_stmt);
     ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
 
@@ -1306,7 +1297,7 @@ char* sorm_to_string(const sorm_table_descriptor_t *table_desc,
         log_debug("Param table_desc is NULL.");
         return NULL;
     }
-    
+
     if(string  == NULL)
     {
         log_debug("Param string is NULL.");
@@ -1632,19 +1623,15 @@ DB_FINALIZE :
     return ret_val;
 }
 
-    sorm_table_descriptor_t * 
-sorm_new(
-        const sorm_table_descriptor_t *init_table_desc)
-
-{
-    return sorm_new_array(init_table_desc, 1);
+sorm_table_descriptor_t* sorm_new(
+        const sorm_allocator_t *allocator, 
+        const sorm_table_descriptor_t *init_table_desc) {
+    return sorm_new_array(allocator, init_table_desc, 1);
 }
 
-    sorm_table_descriptor_t * 
-sorm_new_array(
-        const sorm_table_descriptor_t *init_table_desc, int n)
-
-{
+sorm_table_descriptor_t* sorm_new_array(
+        const sorm_allocator_t *allocator, 
+        const sorm_table_descriptor_t *init_table_desc, int n) {
     /* pointer to connection in new struct */
     sorm_table_descriptor_t *table_desc = NULL;
     sorm_table_descriptor_t *table_desc_pos = NULL;
@@ -1653,77 +1640,69 @@ sorm_new_array(
     //log_debug("Start");
     log_debug("Array size(%d)", n);
 
-    if(init_table_desc == NULL)
-    {
+    if(init_table_desc == NULL) {
         log_error("Param init_table_desc is NULL");
         return NULL;
     }
 
-    if(n == 0)
-    {
+    if(n == 0) {
         log_debug("sorm_new_array 0\n");
         return NULL;
     }
 
-    table_desc = usr_malloc(init_table_desc->size * n);
-    if(table_desc == NULL)
-    {
-        log_debug("usr_malloc fail");
+    table_desc = _malloc(allocator, init_table_desc->size * n);
+    if(table_desc == NULL) {
+        log_debug("sorm_malloc fail");
         return NULL;
     }
     memset(table_desc, 0, init_table_desc->size * n);
 
-    for(i = 0; i < n; i ++)
-    {
-        table_desc_pos = (sorm_table_descriptor_t *)((char*)table_desc + 
-                init_table_desc->size * (i));
+    for(i = 0; i < n; i ++) {
+        table_desc_pos = (sorm_table_descriptor_t *)(
+                (char*)table_desc + init_table_desc->size * (i));
         *table_desc_pos = *init_table_desc;
     }
 
     //log_debug("Success return");
     return table_desc;
 }
-void sorm_free(
-        sorm_table_descriptor_t *table_desc)
-{
+void sorm_free(const sorm_allocator_t *allocator, 
+        sorm_table_descriptor_t *table_desc) {
     int i;
     //char **txt;
-
-    //log_debug("Start");
-    sorm_free_array(table_desc, 1);
-    //log_debug("Success return");
+    if (table_desc != NULL) {
+        for(i = 0; i < table_desc->columns_num; i ++) {
+            if(sorm_is_stat_needfree(
+                        _get_column_stat(table_desc, i))) {
+                //printf("fuck free heap : (%s, %s)\n", table_desc
+                assert((table_desc->columns[i].type == 
+                            SORM_TYPE_TEXT || 
+                            table_desc->columns[i].type == 
+                            SORM_TYPE_BLOB));
+                assert(table_desc->columns[i].mem == SORM_MEM_HEAP);
+                _free(allocator, 
+                        _heap_member_pointer(table_desc, 
+                            table_desc->columns[i].offset));
+            }
+        }
+    }
 }
 
-void sorm_free_array(
-        sorm_table_descriptor_t *table_desc, int n)
-{
+void sorm_free_array(const sorm_allocator_t *allocator, 
+        sorm_table_descriptor_t *table_desc, int n) {
     int i, j;
     sorm_table_descriptor_t *table_desc_pos = NULL;
     //char **txt;
 
     //log_debug("Start");
 
-    if(table_desc != NULL)
-    {
-        for(i = 0; i < n; i ++)
-        {
-            table_desc_pos = (sorm_table_descriptor_t *)((char*)table_desc + 
-                    table_desc->size * (i));
-            for(j = 0; j < table_desc_pos->columns_num; j ++)
-            {
-                if(sorm_is_stat_needfree(_get_column_stat(table_desc_pos, j)))
-                {
-                    //printf("fuck free heap : (%s, %s)\n", table_desc
-                    assert((table_desc_pos->columns[j].type == SORM_TYPE_TEXT || 
-                                table_desc_pos->columns[j].type == 
-                                SORM_TYPE_BLOB));
-                    assert(table_desc_pos->columns[j].mem == SORM_MEM_HEAP);
-                    usr_free(_heap_member_pointer(table_desc_pos,
-                                table_desc_pos->columns[j].offset));
-                }
-            }
+    if(table_desc != NULL) {
+        for(i = 0; i < n; i ++) {
+            table_desc_pos = (sorm_table_descriptor_t *)
+                ((char*)table_desc + table_desc->size * (i));
+            sorm_free(allocator, table_desc_pos);
         }
-        usr_free(table_desc);
+        _free(allocator, table_desc);
     }
     //log_debug("Success return");
 }
@@ -1839,7 +1818,7 @@ static inline int _check_has_value(sorm_table_descriptor_t *table_desc)
             break;
         }
     }
-    
+
     return has_value;
 }
 /**
@@ -1978,25 +1957,13 @@ int sorm_save(
     /* get autoset PK value from db */
     if(table_desc->PK_index != SORM_NO_PK)
     {
-        /* add lock beacuse  a separte thread can influence the rowid result*/
-        if((conn->transaction_num == 0) && 
-                (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
-        {
-            sem_p(conn->sem_key);
-        }
-
         row_id = sqlite3_last_insert_rowid(conn->sqlite3_handle);
-        ret = sorm_set_column_value(table_desc, table_desc->PK_index, &row_id, 0);
+        ret = sorm_set_column_value(
+                table_desc, table_desc->PK_index, &row_id, 0);
         if(ret != SORM_OK)
         {
             log_error("set PK value fail.");
             return ret;
-        }
-
-        if((conn->transaction_num == 0) && 
-                (sorm_semaphore_enabled(conn->flags) == 1)) /* no transaction */
-        {
-            sem_v(conn->sem_key);
         }
     }
 
@@ -2031,7 +1998,7 @@ int sorm_delete(
         log_error("Param desc is NULL");
         return SORM_ARG_NULL;
     }
-    
+
     ret = _check_has_value(table_desc);
     if(ret == 0)
     {
@@ -2248,6 +2215,7 @@ DB_FINALIZE:
 
 int sorm_select_one_by_column(
         const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
         const sorm_table_descriptor_t *table_desc,
         const char *columns_name, int column_index, 
         const void *column_value,
@@ -2270,7 +2238,8 @@ int sorm_select_one_by_column(
         return ret;
     }
 
-    ret = sorm_select_some_array_by(conn, table_desc, columns_name,
+    ret = sorm_select_some_array_by(conn, allocator, 
+            table_desc, columns_name,
             filter, &n, get_row);
 
     return ret;
@@ -2278,7 +2247,9 @@ int sorm_select_one_by_column(
 
 static int _select(
         select_core_t select_core,
-        const sorm_connection_t *conn, const char *columns_name, 
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        const char *columns_name, 
         int tables_num, const sorm_table_descriptor_t **tables_desc,
         int *is_tables_select,
         const char **tables_column_name,
@@ -2323,18 +2294,18 @@ static int _select(
         return SORM_FILTER_EMPTY;
     }
 
-    select_columns_of_tables = sys_malloc(sizeof(select_columns_t) * tables_num);
-    if(select_columns_of_tables == NULL)
-    {
+    select_columns_of_tables = _malloc(NULL,
+            sizeof(select_columns_t) * tables_num);
+    if(select_columns_of_tables == NULL) {
         log_error("malloc fail.");
         ret_val = SORM_NOMEM;
         goto RETURN;
     }
-    memset(select_columns_of_tables, 0, sizeof(select_columns_t) * tables_num);
-    for(i = 0; i < tables_num; i ++)
-    {
+    memset(select_columns_of_tables, 0, 
+            sizeof(select_columns_t) * tables_num);
+    for(i = 0; i < tables_num; i ++) {
         select_columns_of_tables[i].indexes_in_result = 
-            sys_malloc(sizeof(int) * tables_desc[i]->columns_num);
+            _malloc(NULL, sizeof(int) * tables_desc[i]->columns_num);
         if(select_columns_of_tables[i].indexes_in_result == NULL)
         {
             log_error("malloc fail.");
@@ -2411,7 +2382,8 @@ static int _select(
         goto DB_FINALIZE;
     }
 
-    ret_val = select_core(conn, stmt_handle, tables_num, tables_desc,
+    ret_val = select_core(conn, allocator, 
+            stmt_handle, tables_num, tables_desc,
             is_tables_select, select_columns_of_tables,
             max_rows_num, rows_num,  rows_of_tables);
 
@@ -2427,16 +2399,14 @@ DB_FINALIZE:
 
 RETURN :
 
-    if(select_columns_of_tables != NULL)
-    {
-        for(i = 0; i < tables_num; i ++)
-        {
-            if(select_columns_of_tables[i].indexes_in_result != NULL) 
-            {
-                sys_free(select_columns_of_tables[i].indexes_in_result);
+    if(select_columns_of_tables != NULL) {
+        for(i = 0; i < tables_num; i ++) {
+            if(select_columns_of_tables[i].indexes_in_result 
+                    != NULL) {
+                _free(NULL, select_columns_of_tables[i].indexes_in_result);
             }
         }
-        sys_free(select_columns_of_tables);
+        _free(NULL, select_columns_of_tables);
     }
 
     log_debug("select row number(%d)", *rows_num);
@@ -2450,7 +2420,9 @@ RETURN :
 }
 
 int _select_some_array_core(
-        const sorm_connection_t *conn, sqlite3_stmt* stmt_handle,
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        sqlite3_stmt* stmt_handle,
         int tables_num, const sorm_table_descriptor_t **tables_desc,
         const int *is_table_select, 
         const select_columns_t *select_columns_of_tables, 
@@ -2484,7 +2456,8 @@ int _select_some_array_core(
         if((select_columns_of_tables[i].columns_num != 0) && 
                 (is_table_select[i] == 1))
         {
-            rows_of_tables[i] = sorm_new_array(tables_desc[i], max_rows_num);
+            rows_of_tables[i] = sorm_new_array(
+                    allocator, tables_desc[i], max_rows_num);
             if(rows_of_tables[i] == NULL)
             {
                 log_error("new sorm error.");
@@ -2509,7 +2482,7 @@ int _select_some_array_core(
                         (is_table_select[i] == 1))
                 {
                     ret = _parse_select_result(
-                            conn, stmt_handle, 
+                            allocator, stmt_handle, 
                             select_columns_of_tables[i].indexes_in_result, 
                             (sorm_table_descriptor_t*)((char*)rows_of_tables[i] +
                                 tables_desc[i]->size * (*rows_num)));
@@ -2545,7 +2518,7 @@ RETURN :
     {
         for(i = 0; i < tables_num; i ++)
         {
-            usr_free(rows_of_tables[i]);
+            _free(allocator, rows_of_tables[i]);
             rows_of_tables[i] = NULL;
         }
     }
@@ -2554,7 +2527,9 @@ RETURN :
 }
 
 int _select_some_list_core(
-        const sorm_connection_t *conn, sqlite3_stmt* stmt_handle,
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        sqlite3_stmt* stmt_handle,
         int tables_num, const sorm_table_descriptor_t **tables_desc,
         const int *is_table_select, 
         const select_columns_t *select_columns_of_tables, 
@@ -2585,7 +2560,8 @@ int _select_some_list_core(
         if((select_columns_of_tables[i].columns_num != 0) &&
                 (is_table_select[i] == 1))
         {
-            rows_of_tables[i] = usr_malloc(sizeof(sorm_list_t));
+            rows_of_tables[i] = _malloc(
+                    allocator, sizeof(sorm_list_t));
             if(rows_of_tables[i] == NULL)
             {
                 log_error("malloc for sorm_list error.");
@@ -2610,15 +2586,16 @@ int _select_some_list_core(
                 if((select_columns_of_tables[i].columns_num != 0) &&
                         (is_table_select[i] == 1))
                 {
-                    list_entry = usr_malloc(sizeof(sorm_list_t));
+                    list_entry = _malloc(allocator, sizeof(sorm_list_t));
                     if(list_entry == NULL)
                     {
-                        log_error("usr_malloc for list_entry fail.");
+                        log_error("sorm_malloc for list_entry fail.");
                         ret_val = SORM_NOMEM;
                         goto RETURN;
                     }
                     list_add_tail(list_entry, rows_of_tables[i]);
-                    list_entry->data = sorm_new(tables_desc[i]);
+                    list_entry->data = sorm_new(
+                            allocator, tables_desc[i]);
                     if(list_entry->data == NULL)
                     {
                         log_debug("New sorm error");
@@ -2626,7 +2603,7 @@ int _select_some_list_core(
                         goto RETURN;
                     }
                     ret = _parse_select_result(
-                            conn, stmt_handle, 
+                            allocator, stmt_handle, 
                             select_columns_of_tables[i].indexes_in_result, 
                             (sorm_table_descriptor_t*)list_entry->data);
                     if(ret != SORM_OK)
@@ -2662,7 +2639,7 @@ RETURN :
     {
         for(i = 0; i < tables_num; i ++)
         {
-            sorm_list_free(rows_of_tables[i]);
+            sorm_list_free(allocator, rows_of_tables[i]);
             rows_of_tables[i] = NULL;
         }
     }
@@ -2671,7 +2648,9 @@ RETURN :
 }
 
 int _select_all_list_core(
-        const sorm_connection_t *conn, sqlite3_stmt* stmt_handle,
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        sqlite3_stmt* stmt_handle,
         int tables_num, const sorm_table_descriptor_t **tables_desc,
         const int *is_table_select, 
         const select_columns_t *select_columns_of_tables, 
@@ -2695,7 +2674,8 @@ int _select_all_list_core(
         if((select_columns_of_tables[i].columns_num != 0) &&
                 (is_table_select[i] == 1))
         {
-            rows_of_tables[i] = usr_malloc(sizeof(sorm_list_t));
+            rows_of_tables[i] = _malloc(
+                    allocator, sizeof(sorm_list_t));
             if(rows_of_tables[i] == NULL)
             {
                 log_error("malloc for sorm_list error.");
@@ -2718,15 +2698,17 @@ int _select_all_list_core(
                 if((select_columns_of_tables[i].columns_num != 0) &&
                         (is_table_select[i] == 1))
                 {
-                    list_entry = usr_malloc(sizeof(sorm_list_t));
+                    list_entry = _malloc(
+                            allocator, sizeof(sorm_list_t));
                     if(list_entry == NULL)
                     {
-                        log_error("usr_malloc for list_entry fail.");
+                        log_error("sorm_malloc for list_entry fail.");
                         ret_val = SORM_NOMEM;
                         goto RETURN;
                     }
                     list_add_tail(list_entry, rows_of_tables[i]);
-                    list_entry->data = sorm_new(tables_desc[i]);
+                    list_entry->data = sorm_new(
+                            allocator, tables_desc[i]);
                     if(list_entry->data == NULL)
                     {
                         log_debug("New sorm error");
@@ -2734,7 +2716,7 @@ int _select_all_list_core(
                         goto RETURN;
                     }
                     ret = _parse_select_result(
-                            conn, stmt_handle, 
+                            allocator, stmt_handle, 
                             select_columns_of_tables[i].indexes_in_result, 
                             (sorm_table_descriptor_t*)list_entry->data);
                     if(ret != SORM_OK)
@@ -2770,7 +2752,7 @@ RETURN :
     {
         for(i = 0; i < tables_num; i ++)
         {
-            sorm_list_free(rows_of_tables[i]);
+            sorm_list_free(allocator, rows_of_tables[i]);
             rows_of_tables[i] = NULL;
         }
     }
@@ -2779,7 +2761,9 @@ RETURN :
 }
 
 int sorm_select_some_array_by(
-        const sorm_connection_t *conn, const sorm_table_descriptor_t *table_desc,
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        const sorm_table_descriptor_t *table_desc,
         const char *columns_name, const char *filter, 
         int *rows_num, sorm_table_descriptor_t **rows_p)
 {
@@ -2790,7 +2774,7 @@ int sorm_select_some_array_by(
     //log_debug("Start.");
     is_tables_select = (rows_p == NULL) ? 0 : 1;
     ret = _select(_select_some_array_core,
-            conn, columns_name, 1, &table_desc, 
+            conn, allocator,  columns_name, 1, &table_desc, 
             &is_tables_select, NULL, 0, filter, 
             rows_num, (void **)&rows);
 
@@ -2804,7 +2788,9 @@ int sorm_select_some_array_by(
 
 
 int sorm_select_some_list_by(
-        const sorm_connection_t *conn, const sorm_table_descriptor_t *table_desc,
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        const sorm_table_descriptor_t *table_desc,
         const char *columns_name, const char *filter, 
         int *rows_num, sorm_list_t **rows_head_p)
 {
@@ -2815,7 +2801,7 @@ int sorm_select_some_list_by(
     is_table_select = (rows_head_p == NULL) ? 0 : 1;
 
     ret = _select(_select_some_list_core,
-            conn, columns_name, 1, &table_desc, 
+            conn, allocator, columns_name, 1, &table_desc, 
             &is_table_select, NULL, 0, filter, 
             rows_num, (void **)&rows_head);
 
@@ -2828,7 +2814,9 @@ int sorm_select_some_list_by(
 }
 
 int sorm_select_all_array_by(
-        const sorm_connection_t *conn, const sorm_table_descriptor_t *table_desc,
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        const sorm_table_descriptor_t *table_desc,
         const char *columns_name, const char *filter, 
         int *n, sorm_table_descriptor_t **get_row)
 {
@@ -2844,7 +2832,8 @@ int sorm_select_all_array_by(
         row_head_p = &row_head;
     }
 
-    ret = sorm_select_all_list_by(conn, table_desc, columns_name, filter, n, 
+    ret = sorm_select_all_list_by(
+            conn, allocator, table_desc, columns_name, filter, n, 
             row_head_p);
 
     if(ret != SORM_OK)
@@ -2859,14 +2848,14 @@ int sorm_select_all_array_by(
 
     if(get_row != NULL)
     {
-        _get_row = sorm_new_array(table_desc, *n);
+        _get_row = sorm_new_array(allocator, table_desc, *n);
         if(_get_row == NULL)
         {
             log_debug("New sorm array error");
-            sorm_list_free(row_head);
+            sorm_list_free(allocator, row_head);
             return SORM_NOMEM;
         }
-        _list_cpy_free(table_desc, row_head, *n, _get_row, usr_free);
+        _list_cpy_free(allocator, table_desc, row_head, *n, _get_row);
         *get_row = _get_row;
     }
 
@@ -2875,7 +2864,9 @@ int sorm_select_all_array_by(
 }
 
 int sorm_select_all_list_by(
-        const sorm_connection_t *conn, const sorm_table_descriptor_t *table_desc,
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        const sorm_table_descriptor_t *table_desc,
         const char *columns_name, const char *filter, 
         int *rows_num, sorm_list_t **rows_head_p)
 {
@@ -2886,7 +2877,7 @@ int sorm_select_all_list_by(
     is_table_select = (rows_head_p == NULL) ? 0 : 1;
 
     ret = _select(_select_all_list_core,
-            conn, columns_name, 1, &table_desc, 
+            conn, allocator, columns_name, 1, &table_desc, 
             &is_table_select, NULL, 0, filter, 
             rows_num, (void **)&rows_head);
 
@@ -2899,7 +2890,9 @@ int sorm_select_all_list_by(
 }
 
 int sorm_select_some_array_by_join(
-        const sorm_connection_t *conn, const char *columns_name,
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        const char *columns_name,
         const sorm_table_descriptor_t *table1_desc, 
         const char *table1_column_name,
         const sorm_table_descriptor_t *table2_desc, 
@@ -2924,8 +2917,8 @@ int sorm_select_some_array_by_join(
     is_tables_select[1] = (table2_rows == NULL) ? 0 : 1;
 
     ret = _select(_select_some_array_core, 
-            conn, columns_name, 2, tables_desc, is_tables_select,
-            tables_column_name, join,
+            conn, allocator, columns_name, 2, tables_desc, 
+            is_tables_select, tables_column_name, join,
             filter, rows_num, (void **)rows);
 
     if(table1_rows != NULL)
@@ -2941,7 +2934,9 @@ int sorm_select_some_array_by_join(
 }
 
 int sorm_select_some_list_by_join(
-        const sorm_connection_t *conn, const char *columns_name,
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        const char *columns_name,
         const sorm_table_descriptor_t *table1_desc, 
         const char *table1_column_name,
         const sorm_table_descriptor_t *table2_desc, const 
@@ -2966,8 +2961,8 @@ int sorm_select_some_list_by_join(
     is_tables_select[1] = (table2_rows_head == NULL) ? 0 : 1;
 
     ret = _select(_select_some_list_core, 
-            conn, columns_name, 2, tables_desc, is_tables_select, 
-            tables_column_name, join,
+            conn, allocator, columns_name, 2, tables_desc, 
+            is_tables_select, tables_column_name, join,
             filter, rows_num, (void **)rows_head);
 
     if(table1_rows_head != NULL)
@@ -2983,7 +2978,9 @@ int sorm_select_some_list_by_join(
 }
 
 int sorm_select_all_array_by_join(
-        const sorm_connection_t *conn, const char *columns_name,
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        const char *columns_name,
         const sorm_table_descriptor_t *table1_desc, 
         const char *table1_column_name,
         const sorm_table_descriptor_t *table2_desc, 
@@ -2993,9 +2990,12 @@ int sorm_select_all_array_by_join(
         sorm_table_descriptor_t **table2_rows)
 {
     int ret;
-    sorm_list_t *table1_row_head = NULL, *table2_row_head = NULL,
-                **table1_row_head_p = NULL, **table2_row_head_p = NULL;
-    sorm_table_descriptor_t *_table1_rows = NULL, *_table2_rows = NULL;
+    sorm_list_t *table1_row_head = NULL, 
+                *table2_row_head = NULL,
+                **table1_row_head_p = NULL, 
+                **table2_row_head_p = NULL;
+    sorm_table_descriptor_t *_table1_rows = NULL, 
+                            *_table2_rows = NULL;
 
     if(table1_rows != NULL)
     {
@@ -3009,8 +3009,10 @@ int sorm_select_all_array_by_join(
     }
 
     ret = sorm_select_all_list_by_join(
-            conn, columns_name, table1_desc, table1_column_name,
-            table2_desc, table2_column_name, join, filter, rows_num,
+            conn, allocator, columns_name, 
+            table1_desc, table1_column_name,
+            table2_desc, table2_column_name, 
+            join, filter, rows_num,
             table1_row_head_p, table2_row_head_p);
 
     if(ret != SORM_OK)
@@ -3022,27 +3024,29 @@ int sorm_select_all_array_by_join(
 
     if((table1_rows != NULL) && (table1_row_head != NULL))
     {
-        _table1_rows = sorm_new_array(table1_desc, *rows_num);
+        _table1_rows = sorm_new_array(
+                allocator, table1_desc, *rows_num);
         if(_table1_rows == NULL)
         {
             log_debug("New sorm array error");
             return SORM_NOMEM;
         }
-        _list_cpy_free(table1_desc, table1_row_head, *rows_num, 
-                _table1_rows, usr_free);
+        _list_cpy_free(allocator, table1_desc, table1_row_head, 
+                *rows_num, _table1_rows);
 
         *table1_rows = _table1_rows;
     }
     if((table2_rows != NULL) && (table2_row_head != NULL))
     {
-        _table2_rows = sorm_new_array(table2_desc, *rows_num);
+        _table2_rows = sorm_new_array(
+                allocator, table2_desc, *rows_num);
         if(_table2_rows == NULL)
         {
             log_debug("New sorm array error");
             return SORM_NOMEM;
         }
-        _list_cpy_free(table2_desc, table2_row_head, *rows_num,
-                _table2_rows, usr_free);
+        _list_cpy_free(allocator, table2_desc, table2_row_head, 
+                *rows_num, _table2_rows);
         *table2_rows = _table2_rows;
     }
 
@@ -3050,7 +3054,9 @@ int sorm_select_all_array_by_join(
 }
 
 int sorm_select_all_list_by_join(
-        const sorm_connection_t *conn,const char *columns_name, 
+        const sorm_connection_t *conn,
+        const sorm_allocator_t *allocator, 
+        const char *columns_name, 
         const sorm_table_descriptor_t *table1_desc, 
         const char *table1_column_name,
         const sorm_table_descriptor_t *table2_desc, 
@@ -3074,7 +3080,8 @@ int sorm_select_all_list_by_join(
     is_tables_select[1] = (table2_rows_head == NULL) ? 0 : 1;
 
     ret = _select(_select_all_list_core, 
-            conn, columns_name, 2, tables_desc, is_tables_select, 
+            conn, allocator, columns_name, 2, tables_desc, 
+            is_tables_select, 
             tables_column_name, join,
             filter, rows_num, (void **)rows_head);
 
@@ -3312,46 +3319,38 @@ DB_FINALIZE :
     }
 }
 
-int sorm_close(sorm_connection_t *conn)
-{
+int sorm_close(sorm_connection_t *conn) {
     int ret, i;
 
-    if(conn == NULL)
-    {
+    if(conn == NULL) {
         log_debug("Param conn is NULL");
         return SORM_ARG_NULL;
     }
 
     //log_debug("Start");
     //finalize pre-prepared stmt
-    if(conn->begin_read_trans_stmt != NULL)
-    {
+    if(conn->begin_read_trans_stmt != NULL) {
         ret = sqlite3_finalize(conn->begin_read_trans_stmt);
-        if(ret != SQLITE_OK)
-        {
+        if(ret != SQLITE_OK) {
             log_debug("sqlite3_finalize error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             return SORM_DB_ERROR;
         }
         conn->begin_read_trans_stmt = NULL;
     }
-    if(conn->begin_write_trans_stmt != NULL)
-    {
+    if(conn->begin_write_trans_stmt != NULL) {
         ret = sqlite3_finalize(conn->begin_write_trans_stmt);
-        if(ret != SQLITE_OK)
-        {
+        if(ret != SQLITE_OK) {
             log_debug("sqlite3_finalize error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             return SORM_DB_ERROR;
         }
         conn->begin_write_trans_stmt = NULL;
     }
-    if(conn->commit_trans_stmt != NULL)
-    {
+    if(conn->commit_trans_stmt != NULL) {
         log_debug("commit_trans_stmt finalize.");
         ret = sqlite3_finalize(conn->commit_trans_stmt);
-        if(ret != SQLITE_OK)
-        {
+        if(ret != SQLITE_OK) {
             log_debug("sqlite3_finalize error : %s", 
                     sqlite3_errmsg(conn->sqlite3_handle));
             return SORM_DB_ERROR;
@@ -3361,27 +3360,25 @@ int sorm_close(sorm_connection_t *conn)
 
     ret = SQLITE_BUSY;
 
-    while(ret == SQLITE_BUSY)
-    {
+    while(ret == SQLITE_BUSY) {
         ret = sqlite3_close(conn->sqlite3_handle);
     }
 
-    if(ret != SQLITE_OK)
-    {
+    if(ret != SQLITE_OK) {
         log_debug("sqlite3_close error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
 
-    usr_free(conn);
+    _free(NULL, conn);
 
     //log_debug("Success return");
     return SORM_OK;
 }
 
 static inline void _construct_index_suffix(
-        char *index_suffix, char *columns_name)
-{
+        char *index_suffix, char *columns_name) {
+
     assert(index_suffix != NULL);
     assert(columns_name != NULL);
 
@@ -3406,10 +3403,11 @@ static inline void _construct_index_suffix(
     (*index_suffix_iter) = '\0';
 }
 
+
 int sorm_create_index(
         const sorm_connection_t *conn, 
-        sorm_table_descriptor_t *table_desc, char *columns_name)
-{
+        sorm_table_descriptor_t *table_desc, char *columns_name){
+
     char sql_stmt[SQL_STMT_MAX_LEN + 1] = "";
     sqlite3_stmt *stmt_handle = NULL;
     int offset, columns_name_len;
@@ -3434,14 +3432,14 @@ int sorm_create_index(
 
     /* construct the suffix for index name */
     columns_name_len = strlen(columns_name);
-    index_suffix = sys_malloc(columns_name_len + 1); /* +1 for \0 */
+    index_suffix = _malloc(NULL, columns_name_len + 1); /* +1 for \0 */
     _construct_index_suffix(index_suffix, columns_name);
 
     ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1,
-            "CREATE INDEX index_%s ON %s(%s)", 
+            "CREATE INDEX IF NOT EXISTS index_%s ON %s(%s)", 
             index_suffix, table_desc->name, columns_name);
 
-    sys_free(index_suffix);
+    _free(NULL, index_suffix);
 
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
@@ -3487,10 +3485,11 @@ DB_FINALIZE :
     return ret_val;
 }
 
+
 int sorm_drop_index(
         const sorm_connection_t *conn,
-        char *columns_name)
-{
+        char *columns_name) {
+
     char sql_stmt[SQL_STMT_MAX_LEN + 1] = "";
     sqlite3_stmt *stmt_handle = NULL;
     int offset, columns_name_len;
@@ -3510,13 +3509,13 @@ int sorm_drop_index(
 
     /* construct the suffix for index name */
     columns_name_len = strlen(columns_name);
-    index_suffix = sys_malloc(columns_name_len + 1);
+    index_suffix = _malloc(NULL, columns_name_len + 1);
     _construct_index_suffix(index_suffix, columns_name);
 
     ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1,
             "DROP INDEX index_%s", index_suffix);
 
-    sys_free(index_suffix);
+    _free(NULL, index_suffix);
 
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
@@ -3560,7 +3559,6 @@ DB_FINALIZE :
 
     }
     return ret_val;
-
 }
 
 int sorm_update(
@@ -3572,20 +3570,20 @@ int sorm_update(
     int ret, ret_val;
     int i;
     const sorm_column_descriptor_t *column_desc = NULL;
-    
+
     if(table_desc == NULL)
     {
         log_error("Param desc is NULL");
         return SORM_ARG_NULL;
     }
-    
+
     ret = _check_has_value(table_desc);
     if(ret == 0)
     {
         log_debug("No member has value in this object");
         return SORM_OK;
     }
-    
+
     column_desc = table_desc->columns;
 
     /* sql statment : "DELETE FROM table_name WHERE"*/
@@ -3625,7 +3623,7 @@ int sorm_update(
         log_debug("snprintf error while constructing sql statment");
         return SORM_TOO_LONG;
     }
-    
+
     for(i = 0; i < table_desc->columns_num; i ++)
     {
         if(sorm_is_unique_column(
@@ -3647,7 +3645,7 @@ int sorm_update(
         }
     }
     sql_stmt[offset - 4] = '\0';
-    
+
     log_debug("prepare stmt : %s", sql_stmt);
     ret = _sqlite3_prepare(conn, sql_stmt, &stmt_handle);
 
@@ -3657,7 +3655,7 @@ int sorm_update(
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
     }
-    
+
     int bind_index = 1;
     for(i = 0; i < table_desc->columns_num; i ++)
     {
@@ -3690,7 +3688,7 @@ int sorm_update(
             bind_index ++;
         }
     }
-    
+
     ret = _sqlite3_step(conn, stmt_handle, SORM_RWLOCK_WRITE);
 
     if(ret != SQLITE_DONE)
@@ -3705,8 +3703,7 @@ int sorm_update(
 
 DB_FINALIZE :
     ret = _sqlite3_finalize(conn, stmt_handle);
-    if(ret != SQLITE_OK)
-    {
+    if(ret != SQLITE_OK) {
         log_debug("sqlite3_finalize error : %s", 
                 sqlite3_errmsg(conn->sqlite3_handle));
         return SORM_DB_ERROR;
@@ -3716,12 +3713,15 @@ DB_FINALIZE :
     return ret_val;
 }
 
+
 char *sorm_last_stmt() {
     return last_stmt;
 }
 
-int _select_iterate_open(
-        const sorm_connection_t *conn, const char *columns_name, 
+int _select_iterate_open( 
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator,
+        const char *columns_name, 
         int tables_num, const sorm_table_descriptor_t **tables_desc,
         sorm_join_t join, const char *filter, 
         const char **tables_column_name,
@@ -3746,12 +3746,13 @@ int _select_iterate_open(
         log_debug("Param filter is an empty string.");
         return SORM_FILTER_EMPTY;
     }
-    
+
     int i, ret, offset = 0;
     int ret_val = SORM_OK;
     char sql_stmt[SQL_STMT_MAX_LEN + 1] = "";
 
-    sorm_iterator_t *iterator = usr_malloc(sizeof(sorm_iterator_t));
+    sorm_iterator_t *iterator = _malloc(
+            NULL, sizeof(sorm_iterator_t));
     if(iterator == NULL) {
         log_error("malloc fail.");
         ret_val = SORM_NOMEM;
@@ -3764,9 +3765,10 @@ int _select_iterate_open(
     iterator->tables_desc = tables_desc;
     iterator->select_columns_of_tables = NULL;
     iterator->stmt_handle = NULL;
-    
-    iterator->select_columns_of_tables = 
-        usr_malloc(sizeof(select_columns_t) * tables_num);
+    iterator->allocator = allocator;
+
+    iterator->select_columns_of_tables = _malloc(
+            NULL, sizeof(select_columns_t) * tables_num);
     if(iterator->select_columns_of_tables == NULL)
     {
         log_error("malloc fail.");
@@ -3778,7 +3780,8 @@ int _select_iterate_open(
     for(i = 0; i < tables_num; i ++)
     {
         iterator->select_columns_of_tables[i].indexes_in_result = 
-            usr_malloc(sizeof(int) * tables_desc[i]->columns_num);
+            _malloc(NULL, 
+                    sizeof(int) * tables_desc[i]->columns_num);
         if(iterator->select_columns_of_tables[i].indexes_in_result 
                 == NULL)
         {
@@ -3789,7 +3792,7 @@ int _select_iterate_open(
         bzero(iterator->select_columns_of_tables[i].indexes_in_result, 
                 sizeof(int) * tables_desc[i]->columns_num);
     }
-    
+
     ret = _construct_select_stmt(sql_stmt, tables_desc[0]->name,
             columns_name, &offset);
     if(ret != SORM_OK)
@@ -3798,7 +3801,7 @@ int _select_iterate_open(
         ret_val = ret;
         goto RETURN;
     }
-    
+
     if(tables_num > 1)
     {
         char *join_str = NULL;
@@ -3833,7 +3836,7 @@ int _select_iterate_open(
         ret_val = ret;
         goto RETURN;
     }
-    
+
     /* parse columns_name */
     ret = _columns_name_to_select_columns(
             tables_num, tables_desc, columns_name, 
@@ -3844,7 +3847,7 @@ int _select_iterate_open(
         ret_val = ret;
         goto RETURN;
     }
-    
+
     /* sqlite3_prepare */
     log_debug("prepare stmt : %s", sql_stmt);
     snprintf(last_stmt, SQL_STMT_MAX_LEN + 1, "%s\n", sql_stmt);
@@ -3860,24 +3863,29 @@ int _select_iterate_open(
 
     return ret_val;
 RETURN :
+    /* fail return , free memory */
     if (iterator != NULL) {
         if(iterator->select_columns_of_tables != NULL) {
             for(i = 0; i < tables_num; i ++) {
-                if(iterator->select_columns_of_tables[i].indexes_in_result != NULL) 
-                {
-                    usr_free(iterator->select_columns_of_tables[i].indexes_in_result);
+                if(iterator->select_columns_of_tables[i].
+                        indexes_in_result != NULL) {
+                    _free(NULL, iterator->
+                            select_columns_of_tables[i].
+                            indexes_in_result);
                 }
             }
-            usr_free(iterator->select_columns_of_tables);
+            _free(NULL, iterator->select_columns_of_tables);
         }
-        usr_free(iterator);
+        _free(NULL, iterator);
     }
 
     return ret_val;
 }
 
-int sorm_select_iterate_by_join_open(
-        const sorm_connection_t *conn, const char *columns_name,
+int sorm_select_iterate_by_join_open( 
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        const char *columns_name,
         const sorm_table_descriptor_t *table1_desc, 
         const char *table1_column_name,
         const sorm_table_descriptor_t *table2_desc, 
@@ -3889,23 +3897,48 @@ int sorm_select_iterate_by_join_open(
     int *is_tables_select = NULL;
     int ret;
 
-    tables_desc = usr_malloc(sizeof(sorm_table_descriptor_t*) * 2);
+    tables_desc = _malloc(
+            allocator, sizeof(sorm_table_descriptor_t*) * 2);
     assert(tables_desc != NULL);
     tables_desc[0] = table1_desc;
     tables_desc[1] = table2_desc;
-    
-    tables_column_name = usr_malloc(sizeof(char*) * 2);
+
+    tables_column_name = _malloc(allocator, sizeof(char*) * 2);
     assert(tables_column_name != NULL);
     tables_column_name[0] = table1_column_name;
     tables_column_name[1] = table2_column_name;
 
-    ret = _select_iterate_open(conn, columns_name, 2, tables_desc,
-            join, filter, tables_column_name, iterator);
+    ret = _select_iterate_open(conn, allocator, columns_name, 
+            2, tables_desc, join, filter, tables_column_name, 
+            iterator);
 
     if (ret != SORM_OK) {
-        usr_free(tables_desc);
-        usr_free(tables_column_name);
+        _free(allocator, tables_desc);
     }
+    _free(allocator, tables_column_name);
+    return ret;
+}
+
+int sorm_select_iterate_by_open( 
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        const sorm_table_descriptor_t *table_desc, 
+        const char *columns_name, const char *filter, 
+        sorm_iterator_t **iterator) {
+    const sorm_table_descriptor_t **tables_desc = NULL;
+
+    tables_desc = _malloc(
+            allocator, sizeof(sorm_table_descriptor_t*) * 1);
+    assert(tables_desc != NULL);
+    tables_desc[0] = table_desc;
+
+    int ret = _select_iterate_open(conn, allocator, columns_name, 
+            1, tables_desc, 0, filter, NULL, iterator);
+
+    if (ret != SORM_OK) {
+        _free(allocator, tables_desc);
+    }
+
     return ret;
 }
 
@@ -3914,7 +3947,7 @@ int _select_iterate(
         sorm_iterator_t *iterator, 
         int *is_table_select, void **row_of_tables) {
     int ret, ret_val = SORM_OK, i;
-    
+
     if(iterator == NULL)
     {
         log_debug("Param iterator is NULL");
@@ -3922,8 +3955,7 @@ int _select_iterate(
     }
 
     assert(row_of_tables[0] == NULL);
-    assert(row_of_tables[1] == NULL);
-    
+
     int tables_num = iterator->tables_num;
     const sorm_table_descriptor_t **tables_desc = 
         iterator->tables_desc;
@@ -3931,7 +3963,8 @@ int _select_iterate(
         iterator->select_columns_of_tables;
     sqlite3_stmt *stmt_handle = iterator->stmt_handle; 
     const sorm_connection_t *conn = iterator->conn;
-    
+    const sorm_allocator_t *allocator = iterator->allocator;
+
     iterator->has_more = 0;
     log_debug("%d : %d", conn->transaction_num,
             conn->flags);
@@ -3944,10 +3977,11 @@ int _select_iterate(
         for(i = 0; i < tables_num; i ++) {
             if((select_columns_of_tables[i].columns_num != 0) &&
                     (is_table_select[i] == 1)) {
-                row_of_tables[i] = sorm_new(tables_desc[i]);
+                row_of_tables[i] = sorm_new(
+                        allocator, tables_desc[i]);
                 assert(row_of_tables[i] != NULL);
                 ret = _parse_select_result(
-                        conn, stmt_handle, 
+                        allocator, stmt_handle, 
                         select_columns_of_tables[i].indexes_in_result, 
                         (sorm_table_descriptor_t*)row_of_tables[i]);
                 if(ret != SORM_OK) {
@@ -3968,13 +4002,6 @@ int _select_iterate(
 
     log_debug("finish.");
 RETURN:
-    if (ret_val != SORM_OK) {
-        for(i = 0; i < tables_num; i ++) {
-            if (row_of_tables[i] != NULL) {
-                //sorm_free(row_of_tables[i]);
-            }
-        }
-    }
     return ret_val;
 }
 
@@ -3990,7 +4017,7 @@ int sorm_select_iterate_by_join(
     is_tables_select[1] = (table2_row == NULL) ? 0 : 1;
     ret =  _select_iterate(
             iterator, is_tables_select, (void **)rows);
-    
+
     if(table1_row != NULL)
     {
         (*table1_row) = rows[0];
@@ -3998,6 +4025,24 @@ int sorm_select_iterate_by_join(
     if(table2_row != NULL)
     {
         (*table2_row) = rows[1];
+    }
+
+    return ret;
+}
+
+int sorm_select_iterate_by(
+        sorm_iterator_t *iterator, 
+        sorm_table_descriptor_t **table_row) {
+    int is_tables_select[1];
+    int ret;
+    sorm_table_descriptor_t *row = NULL;
+
+    is_tables_select[0] = (table_row == NULL) ? 0 : 1;
+    ret =  _select_iterate(
+            iterator, is_tables_select, (void **)&row);
+
+    if(table_row != NULL) {
+        (*table_row) = row;
     }
 
     return ret;
@@ -4013,7 +4058,8 @@ int sorm_select_iterate_close(sorm_iterator_t *iterator) {
     sqlite3_stmt *stmt_handle = iterator->stmt_handle;
     const sorm_connection_t *conn = iterator->conn;
     int ret_val = SORM_OK, i, ret;
-    
+    const sorm_allocator_t *allocator = iterator->allocator;
+
     ret = _sqlite3_finalize(conn, stmt_handle);
     if(ret != SQLITE_OK)
     {
@@ -4026,17 +4072,27 @@ int sorm_select_iterate_close(sorm_iterator_t *iterator) {
         for(i = 0; i < iterator->tables_num; i ++) {
             if(iterator->select_columns_of_tables[i].indexes_in_result != NULL) 
             {
-                usr_free(iterator->select_columns_of_tables[i].indexes_in_result);
+                _free(allocator, iterator->
+                        select_columns_of_tables[i].
+                        indexes_in_result);
             }
         }
-        usr_free(iterator->select_columns_of_tables);
+        _free(allocator, iterator->select_columns_of_tables);
     }
-    usr_free(iterator);
+
+    if (iterator->tables_desc != NULL) {
+        _free(allocator, iterator->tables_desc);
+    }
+    _free(allocator, iterator);
 
     return ret_val;
 }
 
 int sorm_select_iterate_more(sorm_iterator_t *iterator) {
     return iterator->has_more;
+}
+
+int sorm_changes(sorm_connection_t *conn) {
+    return sqlite3_changes(conn->sqlite3_handle);
 }
 

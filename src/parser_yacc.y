@@ -13,10 +13,10 @@ static sorm_list_t *sorm_list_entry = NULL;
 #define parse_column(column_name)    \
     do{ \
         column_desc->name = (column_name);   \
-        sorm_list_entry = (sorm_list_t*)sys_malloc(sizeof(sorm_list_t)); \
+        sorm_list_entry = (sorm_list_t*)_malloc(NULL, sizeof(sorm_list_t)); \
         sorm_list_entry->data = column_desc;    \
         list_add_tail(sorm_list_entry, columns_list_head);  \
-        column_desc = (sorm_column_descriptor_t*)sys_malloc(sizeof(sorm_column_descriptor_t)); \
+        column_desc = (sorm_column_descriptor_t*)_malloc(NULL, sizeof(sorm_column_descriptor_t)); \
         memset(column_desc, 0, sizeof(sorm_column_descriptor_t));   \
         table_desc->columns_num ++; \
     }while(0)

@@ -28,7 +28,7 @@ static void header_generate_define(
     char *upper_table_name, *upper_column_name;
     
     table_name_len = strlen(table_desc->name);
-    upper_table_name = sys_malloc(table_name_len + 1);
+    upper_table_name = _malloc(NULL, table_name_len + 1);
     case_lower2upper(table_desc->name, upper_table_name);
 
     fprintf(file, "#ifndef %s_SORM_H\n"
@@ -39,7 +39,7 @@ static void header_generate_define(
     for(i = 0; i < table_desc->columns_num; i ++)
     {
         upper_column_name = 
-            sys_malloc(strlen(table_desc->columns[i].name) + 1);
+            _malloc(NULL, strlen(table_desc->columns[i].name) + 1);
         case_lower2upper(table_desc->columns[i].name, upper_column_name);
         fprintf(file, "#define %s__%s__MAX_LEN %d\n", 
                 upper_table_name, upper_column_name, 
@@ -56,7 +56,7 @@ static void header_generate_define(
     for(i = 0; i < table_desc->columns_num; i ++)
     {
         upper_column_name = 
-            sys_malloc(strlen(table_desc->columns[i].name) + 1);
+            _malloc(NULL, strlen(table_desc->columns[i].name) + 1);
         case_lower2upper(table_desc->columns[i].name, upper_column_name);
         fprintf(file, "#define COLUMN__%s__%s \"%s.%s\"\n", 
                 upper_table_name, upper_column_name, 
@@ -79,7 +79,7 @@ static void header_generate_define(
             table_desc->name, table_desc->name, 
             table_desc->name, table_desc->name);
     
-    sys_free(upper_table_name);
+    _free(NULL, upper_table_name);
 }
 
 static void header_generate_init(
@@ -87,7 +87,7 @@ static void header_generate_init(
     int i;
     char *upper_table_name;
 
-    upper_table_name = sys_malloc(strlen(table_desc->name) + 1);
+    upper_table_name = _malloc(NULL, strlen(table_desc->name) + 1);
     case_lower2upper(table_desc->name, upper_table_name);
     fprintf(file, 
             "#define %s_INIT { %s_table_descriptor, \\\n"
@@ -140,7 +140,7 @@ static void header_generate_struct(
             INDENT "sorm_table_descriptor_t table_desc;\n\n",
             table_desc->name);
 
-    upper_table_name = sys_malloc(strlen(table_desc->name) + 1);
+    upper_table_name = _malloc(NULL, strlen(table_desc->name) + 1);
     case_lower2upper(table_desc->name, upper_table_name);
 
     for(i = 0; i < table_desc->columns_num; i ++)
@@ -170,7 +170,7 @@ static void header_generate_struct(
                             table_desc->columns[i].name);
                 }else if(table_desc->columns[i].mem == SORM_MEM_STACK)
                 {
-                    upper_column_name = sys_malloc(
+                    upper_column_name = _malloc(NULL, 
                             strlen(table_desc->columns[i].name) + 1);
                     case_lower2upper(
                             table_desc->columns[i].name, upper_column_name);
@@ -178,7 +178,7 @@ static void header_generate_struct(
                     fprintf(file, INDENT "char        %s[%s__%s__MAX_LEN + 1];\n\n",
                             table_desc->columns[i].name,
                             upper_table_name, upper_column_name);
-                    sys_free(upper_column_name);
+                    _free(NULL, upper_column_name);
                     upper_column_name = NULL;
                 }else
                 {
@@ -197,7 +197,7 @@ static void header_generate_struct(
                             table_desc->columns[i].name);
                 }else if(table_desc->columns[i].mem == SORM_MEM_STACK)
                 {
-                    upper_column_name = sys_malloc(
+                    upper_column_name = _malloc(NULL, 
                             strlen(table_desc->columns[i].name) + 1);
                     case_lower2upper(
                             table_desc->columns[i].name, upper_column_name);
@@ -205,7 +205,7 @@ static void header_generate_struct(
                     fprintf(file, INDENT "char        %s[%s__%s__MAX_LEN + 1];\n\n",
                             table_desc->columns[i].name,
                             upper_table_name, upper_column_name);
-                    sys_free(upper_column_name);
+                    _free(NULL, upper_column_name);
                     upper_column_name = NULL;
                 }else
                 {
@@ -220,7 +220,7 @@ static void header_generate_struct(
 
     }
 
-    sys_free(upper_table_name);
+    _free(NULL, upper_table_name);
     fprintf(file, "} %s_t;\n\n", table_desc->name);
 }
 
@@ -241,16 +241,16 @@ static void header_generate_func_get_desc(
 static void header_generate_func_new(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
-    fprintf(file, "%s_t* %s_new();\n\n", table_desc->name, table_desc->name);
+    fprintf(file, "%s_t* %s_new(const sorm_allocator_t *allocator);\n\n", table_desc->name, table_desc->name);
 }
 
 static void header_generate_func_free(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
-    fprintf(file, "void %s_free(%s_t *%s);\n\n", 
+    fprintf(file, "void %s_free(const sorm_allocator_t *allocator, %s_t *%s);\n\n", 
             table_desc->name, table_desc->name, table_desc->name);
 
-    fprintf(file, "void %s_free_array(%s_t *%s, int n);\n\n", 
+    fprintf(file, "void %s_free_array(const sorm_allocator_t *allocator, %s_t *%s, int n);\n\n", 
             table_desc->name, table_desc->name, table_desc->name);
 }
 
@@ -403,6 +403,7 @@ static void header_generate_func_select(
                 case SORM_TYPE_INT :
                     fprintf(file, "int %s_select_by_%s(\n"
                             INDENT_TWICE "const sorm_connection_t *conn,\n"
+                            INDENT_TWICE "const sorm_allocator_t *allocator,\n"
                             INDENT_TWICE "const char *column_names, int %s,\n"
                             INDENT_TWICE "%s_t **%s);\n", table_desc->name, 
                             table_desc->columns[i].name, 
@@ -412,6 +413,7 @@ static void header_generate_func_select(
                 case SORM_TYPE_INT64 :
                     fprintf(file, "int %s_select_by_%s(\n"
                             INDENT_TWICE "const sorm_connection_t *conn,\n"
+                            INDENT_TWICE "const sorm_allocator_t *allocator,\n"
                             INDENT_TWICE "const char *column_names, int64_t %s,\n"
                             INDENT_TWICE "%s_t **%s);\n", table_desc->name, 
                             table_desc->columns[i].name, 
@@ -421,6 +423,7 @@ static void header_generate_func_select(
                 case SORM_TYPE_TEXT :
                     fprintf(file, "int %s_select_by_%s(\n"
                             INDENT_TWICE "const sorm_connection_t *conn,\n"
+                            INDENT_TWICE "const sorm_allocator_t *allocator,\n"
                             INDENT_TWICE "const char *column_names, "
                                          "const char* %s,\n"
                             INDENT_TWICE "%s_t **%s);\n", table_desc->name, 
@@ -431,6 +434,7 @@ static void header_generate_func_select(
                 case SORM_TYPE_DOUBLE :
                     fprintf(file, "int %s_select_by_%s(\n"
                             INDENT_TWICE "const sorm_connection_t *conn,\n"
+                            INDENT_TWICE "const sorm_allocator_t *allocator,\n"
                             INDENT_TWICE "const char *column_names, "
                                          "double* %s,\n"
                             INDENT_TWICE "%s_t **%s);\n", table_desc->name, 
@@ -450,18 +454,22 @@ static void header_generate_func_select(
 
     fprintf(file, "int %s_select_some_array_by(\n"
             INDENT_TWICE "const sorm_connection_t *conn,\n"
+            INDENT_TWICE "const sorm_allocator_t *allocator,\n"
             INDENT_TWICE "const char *column_names, const char *filter,\n" 
             INDENT_TWICE "int *n, %s_t **%ss_array);\n"
             "int %s_select_some_list_by(\n"
             INDENT_TWICE "const sorm_connection_t *conn,\n"
+            INDENT_TWICE "const sorm_allocator_t *allocator,\n"
             INDENT_TWICE"const char *column_names, const char *filter,\n" 
             INDENT_TWICE"int *n, sorm_list_t **%ss_list_head);\n"
             "int %s_select_all_array_by(\n"
             INDENT_TWICE "const sorm_connection_t *conn,\n"
+            INDENT_TWICE "const sorm_allocator_t *allocator,\n"
             INDENT_TWICE "const char *column_names, const char *filter,\n"
             INDENT_TWICE "int *n, %s_t **%ss_array);\n"
             "int %s_select_all_list_by(\n"
             INDENT_TWICE "const sorm_connection_t *conn,\n"
+            INDENT_TWICE "const sorm_allocator_t *allocator,\n"
             INDENT_TWICE "const char *column_names, const char *filter,\n" 
             INDENT_TWICE "int *n, sorm_list_t **%ss_list_head);\n\n",
             table_desc->name, table_desc->name, 
@@ -469,6 +477,18 @@ static void header_generate_func_select(
             table_desc->name, table_desc->name, 
             table_desc->name, table_desc->name,
             table_desc->name, table_desc->name); 
+    
+    fprintf(file, "int %s_select_iterate_by_open(\n"
+            INDENT_TWICE "const sorm_connection_t *conn,\n"
+            INDENT_TWICE "const sorm_allocator_t *allocator,\n"
+            INDENT_TWICE "const char *column_names, const char *filter,\n" 
+            INDENT_TWICE "sorm_iterator_t **iterator);\n"
+            "int %s_select_iterate_by(\n"
+            INDENT_TWICE "sorm_iterator_t *iterator, %s_t **%s);\n"
+            "#define %s_select_iterate_close sorm_select_iterate_close\n"
+            "#define %s_select_iterate_more sorm_select_iterate_more\n",
+            table_desc->name, table_desc->name, table_desc->name, 
+            table_desc->name, table_desc->name, table_desc->name); 
 
     /* select by foreign key */
     for(i = 0; i < table_desc->columns_num; i ++)
@@ -477,24 +497,28 @@ static void header_generate_func_select(
         {
             fprintf(file, "int %s_select_some_array_by_%s(\n"
                     INDENT_TWICE "const sorm_connection_t *conn,\n"
+                    INDENT_TWICE "const sorm_allocator_t *allocator,\n"
                     INDENT_TWICE "const char *column_names, const char *filter,\n" 
                     INDENT_TWICE "int *n, %s_t **%ss_array);\n",
                     table_desc->name, table_desc->columns[i].foreign_table_name,
                     table_desc->name, table_desc->name);
             fprintf(file, "int %s_select_some_list_by_%s(\n"
                     INDENT_TWICE "const sorm_connection_t *conn,\n"
+                    INDENT_TWICE "const sorm_allocator_t *allocator,\n"
                     INDENT_TWICE"const char *column_names, const char *filter,\n" 
                     INDENT_TWICE"int *n, sorm_list_t **%ss_list_head);\n",
                     table_desc->name, table_desc->columns[i].foreign_table_name,
                     table_desc->name);
             fprintf(file, "int %s_select_all_array_by_%s(\n"
                     INDENT_TWICE "const sorm_connection_t *conn,\n"
+                    INDENT_TWICE "const sorm_allocator_t *allocator,\n"
                     INDENT_TWICE "const char *column_names, const char *filter,\n"
                     INDENT_TWICE "int *n, %s_t **%ss_array);\n", 
                     table_desc->name, table_desc->columns[i].foreign_table_name,
                     table_desc->name, table_desc->name);
             fprintf(file, "int %s_select_all_list_by_%s(\n"
                     INDENT_TWICE "const sorm_connection_t *conn,\n"
+                    INDENT_TWICE "const sorm_allocator_t *allocator,\n"
                     INDENT_TWICE "const char *column_names, const char *filter,\n" 
                     INDENT_TWICE "int *n, sorm_list_t **%ss_list_head);\n\n",
                     table_desc->name, table_desc->columns[i].foreign_table_name,
@@ -524,11 +548,11 @@ void header_generate(
     int i;
 
     table_name_len = strlen(table_desc->name);
-    file_name = sys_malloc(table_name_len + 8);
+    file_name = _malloc(NULL, table_name_len + 8);
     sprintf(file_name, "%s_sorm.h", table_desc->name);
 
     file = fopen(file_name, "w");
-    sys_free(file_name);
+    _free(NULL, file_name);
     if(file == NULL)
     {
         error("fopen file(%s) error : %s.", file_name, strerror(errno));
