@@ -91,10 +91,6 @@ typedef struct sorm_list_s
     for(pos = (head)->next, object = (type*)(pos->data), \
             scratch = pos->next; pos != (head); \
             pos = scratch, object = (type*)(pos->data, scratch = pos->next)
-/**
- * @brief: free a list, the list Param can be NULL
- */
-inline void _list_free(sorm_list_t *sorm_list, void (*data_free)(void*));
 
 static inline void _list_add(
         sorm_list_t *new, sorm_list_t *prev, sorm_list_t *next)
@@ -267,6 +263,16 @@ typedef struct
     int *indexes_in_result;  /* the index of selected columns in result */
 }select_columns_t;
 
+/** @brief: allocator  */
+typedef struct sorm_allocator_s
+{
+    void*(*_alloc)(void *memory_pool, size_t size);
+    void(*_free)(void *memory_pool, void *point);
+    char*(*_strdup)(void *memory_pool, const char *string);
+
+    void *memory_pool;
+}sorm_allocator_t;
+
 typedef struct {
     const sorm_connection_t *conn;
     int tables_num;
@@ -274,6 +280,7 @@ typedef struct {
     const sorm_table_descriptor_t **tables_desc;
     select_columns_t *select_columns_of_tables;
     sqlite3_stmt *stmt_handle;
+    const sorm_allocator_t *allocator;
 }sorm_iterator_t;
 
 static const char* sorm_errorstr[] = 
@@ -459,8 +466,8 @@ int sorm_delete_table(
  *
  * @return: pointer to the new sorm object, NULL if fail
  */
-sorm_table_descriptor_t * 
-sorm_new(
+sorm_table_descriptor_t* sorm_new(
+        const sorm_allocator_t *allocator, 
         const sorm_table_descriptor_t *init_table_desc);
 /**
  * @brief: new an array of sorm objects according the table descriptor
@@ -470,17 +477,17 @@ sorm_new(
  *
  * @return: pointer the the array, NULL if fail
  */
-sorm_table_descriptor_t * 
-sorm_new_array(
-        const sorm_table_descriptor_t *init_table_desc, int num);
+sorm_table_descriptor_t * sorm_new_array(
+        const sorm_allocator_t *allocator, 
+        const sorm_table_descriptor_t *init_table_desc, int n);
 /**q
  * @brief: free the momery for the sorm object
  *
  * @param table_desc: the pointer to the sorm object
  */
-void sorm_free(
+void sorm_free(const sorm_allocator_t *allocator, 
         sorm_table_descriptor_t *table_desc);
-void sorm_free_array(
+void sorm_free_array(const sorm_allocator_t *allocator, 
         sorm_table_descriptor_t *table_desc, int n);
 /**
  * @brief: set a column's value for a sorm object
@@ -674,10 +681,20 @@ int sorm_select_iterate_by_join(
         sorm_table_descriptor_t **table1_row, 
         sorm_table_descriptor_t **table2_row);
 
+int sorm_select_iterate_by(
+        sorm_iterator_t *iterator, 
+        sorm_table_descriptor_t **table_row);
+
 int sorm_select_iterate_close(sorm_iterator_t *iterator);
 /**
  * @brief: 1 means has more, else return 0
  */
 int sorm_select_iterate_more(sorm_iterator_t *iterator);
+/**
+ * @brief: return the number of database rows that were changed
+ * or inserted or deleted by the most recently completed SQL 
+ * statement
+ */
+int sorm_changes(sorm_connection_t *conn);
 
 #endif
