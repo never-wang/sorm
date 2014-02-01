@@ -226,7 +226,7 @@ int main()
         test_index->uuid_stat = SORM_STAT_VALUED;
         sprintf(test_index->name,"name-%d", i);
         test_index->name_stat = SORM_STAT_VALUED;
-        ret = test_index_save(conn, test_index);
+        ret = test_index_insert(conn, test_index);
         assert(ret == SORM_OK);
     }
     sorm_commit_transaction(conn);

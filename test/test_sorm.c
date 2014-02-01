@@ -77,7 +77,7 @@ static int suite_sorm_init(void)
     return 0;
 }
 
-static int _save_device_range(int num)
+static int _insert_device_range(int num)
 {
     device_t *device;
     int i;
@@ -95,7 +95,7 @@ static int _save_device_range(int num)
         sprintf(device->password, "passwd-%d", i);
         device->password_stat = SORM_STAT_VALUED;
 
-        device_save(conn, device);
+        device_insert(conn, device);
 
         device_free(NULL, device);
     }
@@ -144,7 +144,7 @@ static void test_device_new(void)
     device_free(NULL, device);
 }
 
-/* save, select and delete */
+/* insert, select and delete */
 static void test_device_ssd(void)
 {
     int ret;
@@ -152,9 +152,9 @@ static void test_device_ssd(void)
     device_t *to_del_device;
     int n;
 
-    //save a unset device
+    //insert a unset device
     device = device_new(NULL);
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
     CU_ASSERT(ret == SORM_OK);
 
     device_set_id(device, 1);
@@ -162,7 +162,7 @@ static void test_device_ssd(void)
     device_set_name(device, "test_device");
     device_set_password(device, "654321");
 
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
 
     CU_ASSERT(ret == SORM_OK);
 
@@ -229,7 +229,7 @@ static void test_device_update(void)
     device_t *update_device, *get_device;
 
     device_set_id(device, 1);
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
     CU_ASSERT(ret == SORM_OK);
 
     ret = device_select_by_id(conn, NULL, ALL_COLUMNS, 1, &update_device);
@@ -238,7 +238,7 @@ static void test_device_update(void)
     device_set_uuid(update_device, "456i789");
     device_set_password(update_device, "789123");
 
-    ret = device_save(conn, update_device);
+    ret = device_replace(conn, update_device);
     CU_ASSERT(ret == SORM_OK);
 
     ret = device_select_by_id(conn, NULL, ALL_COLUMNS, 1, &get_device);
@@ -367,7 +367,7 @@ static void test_device_select(void)
         device->name_stat = SORM_STAT_VALUED;
         sprintf(device->password, "passwd-%d", i);
         device->password_stat = SORM_STAT_VALUED;
-        device_save(conn, device);
+        device_insert(conn, device);
     }
     /*****************************/
     /* test select_some_array_by */
@@ -668,7 +668,7 @@ static void test_device_auto_pk(void)
         device->name_stat = SORM_STAT_VALUED;
         sprintf(device->password, "passwd-%d", i);
         device->password_stat = SORM_STAT_VALUED;
-        device_save(conn, device);
+        device_insert(conn, device);
     }
 
     for(i = 0; i < amount; i ++)
@@ -704,7 +704,7 @@ static void test_transaction(void)
         device_set_uuid(device, buf);
         sprintf(buf, "name-%d", i);
         device_set_name(device,buf);
-        ret = device_save(conn, device);
+        ret = device_insert(conn, device);
         CU_ASSERT(ret == SORM_OK);
         device_free(NULL, device);
     }
@@ -736,7 +736,7 @@ static void test_transaction(void)
     device->name_stat = SORM_STAT_VALUED;
     sprintf(device->password, "passwd");
     device->password_stat = SORM_STAT_VALUED;
-    ret = device_save(conn, device);
+    ret = device_replace(conn, device);
     CU_ASSERT(ret == SORM_OK);
 
     ret = sorm_commit_transaction(conn);
@@ -758,7 +758,7 @@ static void test_transaction(void)
     device->name_stat = SORM_STAT_VALUED;
     sprintf(device->password, "passwd");
     device->password_stat = SORM_STAT_VALUED;
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
     CU_ASSERT(ret == SORM_OK);
 
     ret = sorm_rollback_transaction(conn);
@@ -778,7 +778,7 @@ static void test_transaction(void)
     device->name_stat = SORM_STAT_VALUED;
     sprintf(device->password, "passwd");
     device->password_stat = SORM_STAT_VALUED;
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
     CU_ASSERT(ret == SORM_OK);
 
     ret = sorm_begin_write_transaction(conn);
@@ -791,7 +791,7 @@ static void test_transaction(void)
     device->name_stat = SORM_STAT_VALUED;
     sprintf(device->password, "passwd2");
     device->password_stat = SORM_STAT_VALUED;
-    ret = device_save(conn, device);
+    ret = device_replace(conn, device);
     CU_ASSERT(ret == SORM_OK);
 
     ret = sorm_rollback_transaction(conn);
@@ -820,7 +820,7 @@ static void test_transaction(void)
     device->name_stat = SORM_STAT_VALUED;
     sprintf(device->password, "passwd");
     device->password_stat = SORM_STAT_VALUED;
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
     CU_ASSERT(ret == SORM_OK);
 
     ret = sorm_begin_write_transaction(conn);
@@ -833,7 +833,7 @@ static void test_transaction(void)
     device->name_stat = SORM_STAT_VALUED;
     sprintf(device->password, "passwd2");
     device->password_stat = SORM_STAT_VALUED;
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
     CU_ASSERT(ret == SORM_OK);
 
     ret = sorm_commit_transaction(conn);
@@ -875,7 +875,7 @@ static void test_select_columns()
         device->name_stat = SORM_STAT_VALUED;
         sprintf(device->password, "passwd-%d", i);
         device->password_stat = SORM_STAT_VALUED;
-        device_save(conn, device);
+        device_insert(conn, device);
     }
 
     //printf("select uuid\n");
@@ -980,7 +980,7 @@ static void test_delete_by_id(void)
     device->name_stat = SORM_STAT_VALUED;
     sprintf(device->password, "passwd");
     device->password_stat = SORM_STAT_VALUED;
-    device_save(conn, device);
+    device_insert(conn, device);
     device_free(NULL, device);
 
     ret = device_delete_by_id(conn, 1);
@@ -999,14 +999,14 @@ static void test_delete_by(void)
     int ret, n;
 
     /*insert some value for select*/
-    _save_device_range(10);
+    _insert_device_range(10);
     ret = device_delete_by(conn, NULL);
     CU_ASSERT(ret == SORM_OK);
     ret = device_select_all_array_by(conn, NULL,  DEVICE__ALL_COLUMNS, NULL, &n, NULL);
     CU_ASSERT(ret == SORM_NOEXIST);
     CU_ASSERT(n == 0);
     
-    _save_device_range(10);
+    _insert_device_range(10);
     ret = device_select_all_array_by(conn, NULL,  DEVICE__ALL_COLUMNS, NULL, &n, NULL);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(n == 10);
@@ -1042,7 +1042,7 @@ static void test_select_by_column(void)
     device->name_stat = SORM_STAT_VALUED;
     sprintf(device->password, "passwd");
     device->password_stat = SORM_STAT_VALUED;
-    device_save(conn, device);
+    device_insert(conn, device);
 
     ret = device_select_by_uuid(conn, NULL, ALL_COLUMNS, "uuid", &select_device);
     CU_ASSERT(ret == SORM_OK);
@@ -1081,7 +1081,7 @@ static void test_select_null(void)
         device->name_stat = SORM_STAT_VALUED;
         sprintf(device->password, "passwd-%d", i);
         device->password_stat = SORM_STAT_VALUED;
-        device_save(conn, device);
+        device_insert(conn, device);
     }
 
     n = amount / 2;
@@ -1134,7 +1134,7 @@ static void test_sorm_select_by_join()
         sprintf(device->password, "passwd-%d", i);
         device->password_stat = SORM_STAT_VALUED;
 
-        device_save(conn, device);
+        device_insert(conn, device);
 
         device_free(NULL, device);
     }
@@ -1154,7 +1154,7 @@ static void test_sorm_select_by_join()
         sprintf(volume->label, "label-%d", i);
         volume->label_stat = SORM_STAT_VALUED;
 
-        volume_save(conn, volume);
+        volume_insert(conn, volume);
         volume_free(NULL, volume);
     }
     volume = volume_new(NULL);
@@ -1169,7 +1169,7 @@ static void test_sorm_select_by_join()
     volume->uuid_stat = SORM_STAT_VALUED;
     sprintf(volume->label, "label-%d", i);
     volume->label_stat = SORM_STAT_VALUED;
-    volume_save(conn, volume);
+    volume_insert(conn, volume);
     volume_free(NULL, volume);
 
     device = device_new(NULL);
@@ -1443,7 +1443,7 @@ static void test_sorm_select_columns_by_join()
         device->name_stat = SORM_STAT_VALUED;
         sprintf(device->password, "passwd-%d", i);
         device->password_stat = SORM_STAT_VALUED;
-        device_save(conn, device);
+        device_insert(conn, device);
     }
 
     volume = volume_new(NULL);
@@ -1459,7 +1459,7 @@ static void test_sorm_select_columns_by_join()
         volume->drive_stat = SORM_STAT_VALUED;
         sprintf(volume->label, "label-%d", i);
         volume->label_stat = SORM_STAT_VALUED;
-        volume_save(conn, volume);
+        volume_insert(conn, volume);
     }
     i = 6;
     volume->id = i;
@@ -1472,7 +1472,7 @@ static void test_sorm_select_columns_by_join()
     volume->uuid_stat = SORM_STAT_VALUED;
     sprintf(volume->label, "label-%d", i);
     volume->label_stat = SORM_STAT_VALUED;
-    volume_save(conn, volume);
+    volume_insert(conn, volume);
 
     //printf("select device.id and volume.id\n");
     ret = sorm_select_all_array_by_join(conn, NULL,  
@@ -1745,7 +1745,7 @@ static void test_volume_select_by_driver(void)
         device->name_stat = SORM_STAT_VALUED;
         sprintf(device->password, "passwd-%d", i);
         device->password_stat = SORM_STAT_VALUED;
-        device_save(conn, device);
+        device_insert(conn, device);
     }
 
     volume = volume_new(NULL);
@@ -1761,7 +1761,7 @@ static void test_volume_select_by_driver(void)
         volume->drive_stat = SORM_STAT_VALUED;
         sprintf(volume->label, "label-%d", i);
         volume->label_stat = SORM_STAT_VALUED;
-        volume_save(conn, volume);
+        volume_insert(conn, volume);
     }
     i = 6;
     volume->id = i;
@@ -1774,7 +1774,7 @@ static void test_volume_select_by_driver(void)
     volume->uuid_stat = SORM_STAT_VALUED;
     sprintf(volume->label, "label-%d", i);
     volume->label_stat = SORM_STAT_VALUED;
-    volume_save(conn, volume);
+    volume_insert(conn, volume);
 
     ret = volume_select_all_array_by_device(conn, NULL, "volume.*", 
             NULL, &n, &select_volume);
@@ -1882,7 +1882,7 @@ static void test_sorm_select_null_by_join(void)
         device->name_stat = SORM_STAT_VALUED;
         sprintf(device->password, "passwd-%d", i);
         device->password_stat = SORM_STAT_VALUED;
-        device_save(conn, device);
+        device_insert(conn, device);
     }
 
     volume = volume_new(NULL);
@@ -1898,7 +1898,7 @@ static void test_sorm_select_null_by_join(void)
         volume->drive_stat = SORM_STAT_VALUED;
         sprintf(volume->label, "label-%d", i);
         volume->label_stat = SORM_STAT_VALUED;
-        volume_save(conn, volume);
+        volume_insert(conn, volume);
     }
     i = 6;
     volume->id = i;
@@ -1911,7 +1911,7 @@ static void test_sorm_select_null_by_join(void)
     volume->uuid_stat = SORM_STAT_VALUED;
     sprintf(volume->label, "label-%d", i);
     volume->label_stat = SORM_STAT_VALUED;
-    volume_save(conn, volume);
+    volume_insert(conn, volume);
 
     ret = sorm_select_all_array_by_join(conn, NULL,  ALL_COLUMNS, DESC__DEVICE, COLUMN__DEVICE__ID,
             DESC__VOLUME, COLUMN__VOLUME__DEVICE_ID, SORM_INNER_JOIN, NULL, &n,
@@ -2035,10 +2035,10 @@ static void test_sorm_unique(void)
     device->name_stat = SORM_STAT_VALUED;
     sprintf(device->password, "passwd");
     device->password_stat = SORM_STAT_VALUED;
-    device_save(conn, device);
+    device_insert(conn, device);
     device->id = 2;
     device->id_stat = SORM_STAT_VALUED;
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
 
     ret = device_select_by_id(conn, NULL, ALL_COLUMNS, 1, &select_device);
     CU_ASSERT(ret == SORM_NOEXIST);
@@ -2058,12 +2058,12 @@ static void test_sorm_unique(void)
     device->name_stat = SORM_STAT_VALUED;
     sprintf(device->password, "passwd");
     device->password_stat = SORM_STAT_VALUED;
-    device_save(conn, device);
+    device_insert(conn, device);
     device->id = 2;
     device->id_stat = SORM_STAT_VALUED;
     sprintf(device->uuid,"uuid1");
     device->uuid_stat = SORM_STAT_VALUED;
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
 
     ret = device_select_by_id(conn, NULL, ALL_COLUMNS, 1, &select_device);
     CU_ASSERT(ret == SORM_OK);
@@ -2096,7 +2096,7 @@ static void test_sorm_foreign_key(void)
         sprintf(device->password, "passwd-%d", i);
         device->password_stat = SORM_STAT_VALUED;
 
-        device_save(conn, device);
+        device_insert(conn, device);
 
         device_free(NULL, device);
     }
@@ -2108,7 +2108,7 @@ static void test_sorm_foreign_key(void)
     volume_set_drive(volume, "aaaa");
     volume_set_label(volume, "aaaa");
 
-    ret = volume_save(conn, volume);
+    ret = volume_insert(conn, volume);
     CU_ASSERT(ret == SORM_DB_ERROR);
     volume_free(NULL, volume);
 
@@ -2118,7 +2118,7 @@ static void test_sorm_foreign_key(void)
     volume_set_drive(volume, "aaaa");
     volume_set_label(volume, "aaaa");
 
-    ret = volume_save(conn, volume);
+    ret = volume_insert(conn, volume);
     CU_ASSERT(ret == SORM_OK);
     volume_free(NULL, volume);
 }
@@ -2144,7 +2144,7 @@ static void* pthread_a_work(void* args) {
     device_t *device = device_new(NULL);
     device_set_uuid(device, "uuid0");
     device_set_small_num(device, 10);
-    ret = device_save(_conn, device);
+    ret = device_insert(_conn, device);
     assert(ret == SORM_OK);
 
     sorm_close(_conn);
@@ -2196,7 +2196,7 @@ static void* pthread_b_work(void* args) {
     printf("continue running\n");
 
     device->small_num ++;
-    ret = device_save(_conn, device);
+    ret = device_insert(_conn, device);
     assert(ret == SORM_OK);
     device_free(NULL, device);
     
@@ -2219,7 +2219,7 @@ static void test_pthread_transaction(void) {
     device_t *device = device_new(NULL);
     device_set_uuid(device, "uuid0");
     device_set_small_num(device, 1);
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
     assert(ret == SORM_OK);
     device_free(NULL, device);
     
@@ -2234,7 +2234,7 @@ static void test_pthread_transaction(void) {
     device = device_new(NULL);
     device_set_uuid(device, "uuid0");
     device_set_small_num(device, 1);
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
     assert(ret == SORM_OK);
     device_free(NULL, device);
     
@@ -2284,7 +2284,7 @@ static void test_PK(void)
     device = device_new(NULL);
     sprintf(tmp, "uuid-%d", index);
     device_set_uuid(device, tmp);
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
     CU_ASSERT(ret == SORM_OK);
     CU_ASSERT(device->id == 1);
     device_free(NULL, device);
@@ -2294,7 +2294,7 @@ static void test_PK(void)
         device = device_new(NULL);
         sprintf(tmp, "uuid-%d", i);
         device_set_uuid(device, tmp);
-        ret = device_save(conn, device);
+        ret = device_insert(conn, device);
         CU_ASSERT(ret == SORM_OK);
         CU_ASSERT(device->id == i);
         device_free(NULL, device);
@@ -2362,7 +2362,7 @@ static void test_text(void)
     ret = text_blob_set_text_stack(text_blob, "text_stack");
     CU_ASSERT(ret == SORM_OK);
 
-    ret = text_blob_save(conn, text_blob);
+    ret = text_blob_insert(conn, text_blob);
     CU_ASSERT(ret == SORM_OK);
 
     ret = text_blob_select_by_id(conn, NULL, ALL_COLUMNS, 1, &select_text_blob);
@@ -2382,7 +2382,7 @@ static void test_text(void)
 
     ret = text_blob_set_id(text_blob, 1);
 
-    ret = text_blob_save(conn, text_blob);
+    ret = text_blob_insert(conn, text_blob);
     CU_ASSERT(ret == SORM_OK);
 
     ret = text_blob_select_by_id(conn, NULL, ALL_COLUMNS, 1, &select_text_blob);
@@ -2408,7 +2408,7 @@ static void test_single_quote(void)
 
     device = device_new(NULL);
     device_set_uuid(device, uuid);
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
     CU_ASSERT(ret == SORM_OK);
     ret = device_select_by_uuid(conn, NULL, "*", uuid, &select_device);
     CU_ASSERT(ret == SORM_OK);
@@ -2418,7 +2418,7 @@ static void test_single_quote(void)
     ret = device_select_by_uuid(conn, NULL, "*", uuid, &select_device);
     CU_ASSERT(ret == SORM_NOEXIST);
 
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
     ret = device_delete_by_uuid(conn, uuid);
     ret = device_select_by_uuid(conn, NULL, "*", uuid, &select_device);
     CU_ASSERT(ret == SORM_NOEXIST);
@@ -2433,7 +2433,7 @@ static void test_double_quote(void)
 
     device = device_new(NULL);
     device_set_uuid(device, uuid);
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
     CU_ASSERT(ret == SORM_OK);
     ret = device_select_by_uuid(conn, NULL, "*", uuid, &select_device);
     CU_ASSERT(ret == SORM_OK);
@@ -2443,7 +2443,7 @@ static void test_double_quote(void)
     ret = device_select_by_uuid(conn, NULL, "*", uuid, &select_device);
     CU_ASSERT(ret == SORM_NOEXIST);
 
-    ret = device_save(conn, device);
+    ret = device_insert(conn, device);
     ret = device_delete_by_uuid(conn, uuid);
     ret = device_select_by_uuid(conn, NULL, "*", uuid, &select_device);
     CU_ASSERT(ret == SORM_NOEXIST);
@@ -2462,7 +2462,7 @@ static void test_int64(void)
     device_set_small_num(device, SMALL_NUM);
     device_set_big_num(device, BIG_NUM);
 
-    device_save(conn, device);
+    device_insert(conn, device);
     
     CU_ASSERT(device->small_num == SMALL_NUM);
     CU_ASSERT(device->big_num == BIG_NUM);
@@ -2478,7 +2478,7 @@ static void test_int64(void)
     
     device_set_small_num(device, BIG_NUM);
 
-    device_save(conn, device);
+    device_insert(conn, device);
     
     CU_ASSERT(device->small_num != BIG_NUM);
 
@@ -2511,7 +2511,7 @@ static void test_blob(void)
     CU_ASSERT(blob.i == blob_p->i);
     CU_ASSERT(blob.d == blob_p->d);
 
-    ret = text_blob_save(conn, text_blob);
+    ret = text_blob_insert(conn, text_blob);
     CU_ASSERT(ret == SORM_OK);
 
     ret = text_blob_select_by_id(conn, NULL, ALL_COLUMNS, 1, &select_text_blob);
@@ -2538,7 +2538,7 @@ static void test_blob(void)
 
     ret = text_blob_set_id(text_blob, 1);
 
-    ret = text_blob_save(conn, text_blob);
+    ret = text_blob_insert(conn, text_blob);
     CU_ASSERT(ret == SORM_OK);
 
     ret = text_blob_select_by_id(conn, NULL, ALL_COLUMNS, 1, &select_text_blob);
@@ -2574,7 +2574,7 @@ static void test_heap_select(void)
         CU_ASSERT(ret == SORM_OK);
         ret = text_blob_set_text_heap(text_blob, "text_heap");
         CU_ASSERT(ret == SORM_OK);
-        ret = text_blob_save(conn, text_blob);
+        ret = text_blob_insert(conn, text_blob);
         CU_ASSERT(ret == SORM_OK);
     }
     text_blob_free(NULL, text_blob);
@@ -2622,7 +2622,7 @@ static void test_tb_to_string(void)
 
     char string1[1024];
     sprintf(string1, "text_blob { id(null); text_heap(null); "
-            "text_stack(null); blob_heap(%d); blob_stack(%d); }", 
+            "text_stack(null); blob_heap(%zd); blob_stack(%zd); }", 
             sizeof(blob_t), sizeof(blob_t));
 
     text_blob_to_string(text_blob, string, 1024);

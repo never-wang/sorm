@@ -60,7 +60,7 @@ int test_index_create_table(const sorm_connection_t *conn);
 
 int test_index_delete_table(const sorm_connection_t *conn);
 
-int test_index_save(sorm_connection_t *conn, test_index_t *test_index);
+int test_index_insert(sorm_connection_t *conn, test_index_t *test_index);
 
 int test_index_update(sorm_connection_t *conn, test_index_t *test_index);
 

@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "sorm.h"
+#include "log.h"
 
 static inline void* _malloc(
         const sorm_allocator_t *allocator, size_t size) {

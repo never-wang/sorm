@@ -14,6 +14,8 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
+#include <inttypes.h>
 
 #include "sorm.h"
 #include "log.h"
@@ -86,7 +88,7 @@ static inline void __list_cpy_free(
         log_debug("List get(%d)", i);
         memcpy((char *)rows + table_desc->size * i, pos->data, table_desc->size);
         i ++;
-        sorm_free(allocator, pos->data);
+        _free(allocator, pos->data);
         _free(allocator, pos);
     }
 
@@ -153,7 +155,7 @@ static inline int _get_blob_len(
                 -sizeof(sorm_stat_t) - sizeof(int)));
 }
 
-static inline int _set_blob_len(
+static inline void _set_blob_len(
         sorm_table_descriptor_t *table_desc, int column_index, int len)
 {
     assert(table_desc != NULL);
@@ -568,11 +570,6 @@ static inline int _get_number_from_columns_name(
 
     column_name = _columns_name = _strdup(NULL, columns_name);
     //column_name used to find column_name, _columns_name used for free
-    if(column_name == NULL)
-    {
-        log_debug("sys_strdup for column_name fail");
-        return;
-    }
 
     for(i = 0; i < tables_num; i ++)
     {
@@ -688,7 +685,7 @@ static inline int _column_name_to_index_in_tables(
 
     assert(tables_desc != NULL);
     assert(column_name != NULL);
-    assert(index != NULL);
+    assert(table_index != NULL);
 
     //log_debug("Start.");
     log_debug("Parse column_name : %s", column_name);
@@ -798,7 +795,7 @@ static inline int _columns_name_to_select_columns(
     char* delimiter;
     char *column_name = NULL, *_columns_name = NULL;
     int i, j, 
-        ret, _columns_num, result_columns_num, total_columns_num;
+        ret, result_columns_num;
     int table_index, column_index;
     int ret_val;
 
@@ -960,7 +957,6 @@ static inline int _fix_string(
         const char *string, char *fixed_string, int len)
 {
     const char *iter = string;
-    char *fixed_iter = fixed_string;
 
     int string_len = 0, i;
     int fixed_string_len = 0;
@@ -1026,7 +1022,7 @@ static inline int _construct_column_filter(
                     column_desc->name, *((int32_t*)column_value));
             break;
         case SORM_TYPE_INT64 :
-            offset = snprintf(filter, SQL_STMT_MAX_LEN + 1, "%s = %lld", 
+            offset = snprintf(filter, SQL_STMT_MAX_LEN + 1, "%s = %"PRId64, 
                     column_desc->name, *((int64_t*)column_value));
             break;
         case SORM_TYPE_TEXT :
@@ -1328,7 +1324,7 @@ char* sorm_to_string(const sorm_table_descriptor_t *table_desc,
                     break;
                 case SORM_TYPE_INT64 :
                     ret = snprintf(string + offset, len - offset + 1, 
-                            "%s(%lld); ", column_desc->name, 
+                            "%s(%"PRId64"); ", column_desc->name, 
                             *((int64_t*)((char*)table_desc + 
                                     column_desc->offset)));
                     break;
@@ -1565,7 +1561,6 @@ int sorm_delete_table(
     sqlite3_stmt *stmt_handle = NULL;
     int offset;
     int ret, ret_val;
-    int i;
 
     if(conn == NULL)
     {
@@ -1690,7 +1685,7 @@ void sorm_free(const sorm_allocator_t *allocator,
 
 void sorm_free_array(const sorm_allocator_t *allocator, 
         sorm_table_descriptor_t *table_desc, int n) {
-    int i, j;
+    int i;
     sorm_table_descriptor_t *table_desc_pos = NULL;
     //char **txt;
 
@@ -1821,17 +1816,10 @@ static inline int _check_has_value(sorm_table_descriptor_t *table_desc)
 
     return has_value;
 }
-/**
- * @brief: insert a new row or update a row in a table. for the update,
- *      it will remove the existed row firest.
- *
- * @param desc: the descriptor for the table, and the data about the row
- *
- * @return: error code
- */
-int sorm_save(
+int _save(
         const sorm_connection_t *conn,
-        sorm_table_descriptor_t *table_desc)
+        sorm_table_descriptor_t *table_desc,
+        char *insert_or_replace)
 {
     char sql_stmt[SQL_STMT_MAX_LEN + 1] = "";
     sqlite3_stmt *stmt_handle = NULL;
@@ -1861,7 +1849,7 @@ int sorm_save(
 
     /* sql statment : "UPDATE table_name "*/
     ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1, 
-            "REPLACE INTO %s (", table_desc->name);
+            "%s INTO %s (", insert_or_replace, table_desc->name);
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
         log_error("snprintf error while constructing sql statment, "
@@ -1888,7 +1876,7 @@ int sorm_save(
     sql_stmt[offset - 1] = ')';
 
     ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN - offset + 1, 
-            " VALUES (", table_desc->name);
+            " VALUES (");
     offset += ret;
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
@@ -1980,6 +1968,33 @@ DB_FINALIZE :
     }
     return ret_val;
 }
+
+/**
+ * @brief: insert a new row, if exists, the insert will fail.
+ *
+ * @param desc: the descriptor for the table, and the data about the row
+ *
+ * @return: error code
+ */
+int sorm_insert(
+        const sorm_connection_t *conn,
+        sorm_table_descriptor_t *table_desc) {
+    return _save(conn, table_desc, "INSERT");
+}
+
+/**
+ * @brief: replace a row. if exists, delete the existing row and insert a new one. if not exists, insert a new one.
+ *
+ * @param desc: the descriptor for the table, and the data about the row
+ *
+ * @return: error code
+ */
+int sorm_replace(
+        const sorm_connection_t *conn,
+        sorm_table_descriptor_t *table_desc) {
+    return _save(conn, table_desc, "REPLACE");
+}
+
 int sorm_delete(
         const sorm_connection_t *conn,
         sorm_table_descriptor_t *table_desc)
@@ -2103,8 +2118,6 @@ int sorm_delete_by_column(
         const sorm_connection_t *conn, const sorm_table_descriptor_t *table_desc,
         int column_index, const void *column_value)
 {
-    const sorm_column_descriptor_t *column_desc = NULL;
-
     char filter[SQL_STMT_MAX_LEN + 1];
     int ret;
 
@@ -3100,10 +3113,7 @@ int sorm_select_all_list_by_join(
 int sorm_begin_transaction(
         sorm_connection_t *conn, sqlite3_stmt **stmt_handle, 
         char *sql_stmt, int rwlock_flag) {
-    sqlite3_stmt *_stmt_handle = NULL;
-    int offset;
     int ret, ret_val;
-    sqlite3_stmt *begin_trans_stmt = NULL;
 
     if(conn == NULL)
     {
@@ -3320,7 +3330,7 @@ DB_FINALIZE :
 }
 
 int sorm_close(sorm_connection_t *conn) {
-    int ret, i;
+    int ret;
 
     if(conn == NULL) {
         log_debug("Param conn is NULL");
@@ -3411,7 +3421,7 @@ int sorm_create_index(
     char sql_stmt[SQL_STMT_MAX_LEN + 1] = "";
     sqlite3_stmt *stmt_handle = NULL;
     int offset, columns_name_len;
-    int ret, ret_val, i;
+    int ret, ret_val;
     char *index_suffix;
 
     if(conn == NULL)
@@ -3493,7 +3503,7 @@ int sorm_drop_index(
     char sql_stmt[SQL_STMT_MAX_LEN + 1] = "";
     sqlite3_stmt *stmt_handle = NULL;
     int offset, columns_name_len;
-    int ret, ret_val, i;
+    int ret, ret_val;
     char *index_suffix;
 
     if(conn == NULL)
@@ -3616,7 +3626,7 @@ int sorm_update(
     offset --;
     sql_stmt[offset] = '\0';
     ret = snprintf(sql_stmt + offset, SQL_STMT_MAX_LEN + 1, 
-            " WHERE", table_desc->name);
+            " WHERE");
     offset += ret;
     if(ret < 0 || offset > SQL_STMT_MAX_LEN)
     {
@@ -3850,7 +3860,7 @@ int _select_iterate_open(
 
     /* sqlite3_prepare */
     log_debug("prepare stmt : %s", sql_stmt);
-    snprintf(last_stmt, SQL_STMT_MAX_LEN + 1, "%s\n", sql_stmt);
+    //snprintf(last_stmt, SQL_STMT_MAX_LEN + 1, "%s\n", sql_stmt);
     ret = _sqlite3_prepare(
             conn, sql_stmt, &(iterator->stmt_handle));
     if(ret != SQLITE_OK)
@@ -3894,7 +3904,6 @@ int sorm_select_iterate_by_join_open(
         sorm_iterator_t **iterator) {
     const sorm_table_descriptor_t **tables_desc = NULL;
     const char **tables_column_name = NULL;
-    int *is_tables_select = NULL;
     int ret;
 
     tables_desc = _malloc(

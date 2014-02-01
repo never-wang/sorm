@@ -20,6 +20,8 @@
 #include "generate.h"
 #include "sorm.h"
 #include "memory.h"
+#include "c_generate.h"
+#include "header_generate.h"
 
 sorm_table_descriptor_t *table_desc = NULL;
 sorm_list_t *columns_list_head = NULL;
@@ -74,6 +76,10 @@ int main(int argc, char **argv)
         char create_sql[SQL_STMT_MAX_LEN + 1];
         char *ret_str = 
             fgets(create_sql, SQL_STMT_MAX_LEN + 1, yyin);
+        if (ret_str == NULL) {
+            printf("read create_sql fail\n");
+            return -1;
+        }
         create_sql[strlen(create_sql) - 1] = '\0';
         table_desc->create_sql = create_sql;
         fclose(yyin);

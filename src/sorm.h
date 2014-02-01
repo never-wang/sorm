@@ -504,13 +504,21 @@ int sorm_set_column_value(
         sorm_table_descriptor_t *table_desc, 
         int column_index, const void *value, int value_len);
 /**
- * @brief: insert a new row or update a row in a table
+ * @brief: insert a new row, if exists, the insert will fail.
  *
  * @param desc: pointer to data of the row , which has table description in the head
  *
  * @return: SORM_OK; SORM_ARG_NULL, SORM_TOO_LONG, SORM_DB_ERROR, 
  */
-int sorm_save(const sorm_connection_t *conn, sorm_table_descriptor_t *desc);
+int sorm_insert(const sorm_connection_t *conn, sorm_table_descriptor_t *desc);
+/**
+ * @brief: replace a row. if exists, delete the existing row and insert a new one. if not exists, insert a new one.
+ *
+ * @param desc: the descriptor for the table, and the data about the row
+ *
+ * @return: error code
+ */
+int sorm_replace(const sorm_connection_t *conn, sorm_table_descriptor_t *desc);
 /**
  * @brief: delete a row form a table
  *

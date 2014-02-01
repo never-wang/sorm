@@ -109,7 +109,7 @@ static void header_generate_init(
                 fprintf(file, "0, NULL, ");
                 break;
             default :
-                error("Invalid SORM_TYPE.");
+                printf("Invalid SORM_TYPE.\n");
                 exit(0);
         }
     }
@@ -120,7 +120,7 @@ static void header_generate_init(
             "%s_table_descriptor;\n\n", table_desc->name);
     
     fprintf(file, 
-            "static inline %s_init(%s_t *%s) {\n"
+            "static inline void %s_init(%s_t *%s) {\n"
             INDENT "bzero(%s, sizeof(%s_t)); \n"
             INDENT "%s->table_desc = %s_table_descriptor; \n}\n\n", 
             table_desc->name, table_desc->name, table_desc->name,
@@ -156,7 +156,7 @@ static void header_generate_struct(
         switch(table_desc->columns[i].type)
         {
             case SORM_TYPE_INT :
-                fprintf(file, INDENT "int         %s;\n\n", 
+                fprintf(file, INDENT "int32_t     %s;\n\n", 
                         table_desc->columns[i].name);
                 break;
             case SORM_TYPE_INT64 :
@@ -182,7 +182,7 @@ static void header_generate_struct(
                     upper_column_name = NULL;
                 }else
                 {
-                    error("Invalid SORM_MEM.");
+                    printf("Invalid SORM_MEM.\n");
                     exit(0);
                 }
                 break;
@@ -209,12 +209,12 @@ static void header_generate_struct(
                     upper_column_name = NULL;
                 }else
                 {
-                    error("Invalid SORM_MEM.");
+                    printf("Invalid SORM_MEM.\n");
                     exit(0);
                 }
                 break;
             default :
-                error("Invalid SORM_TYPE.");
+                printf("Invalid SORM_TYPE.\n");
                 exit(0);
         }
 
@@ -271,7 +271,9 @@ static void header_generate_func_delete_table(
 static void header_generate_func_save(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
-    fprintf(file, "int %s_save(sorm_connection_t *conn, %s_t *%s);\n\n",
+    fprintf(file, "int %s_insert(sorm_connection_t *conn, %s_t *%s);\n",
+            table_desc->name, table_desc->name, table_desc->name);
+    fprintf(file, "int %s_replace(sorm_connection_t *conn, %s_t *%s);\n\n",
             table_desc->name, table_desc->name, table_desc->name);
 }
 
@@ -322,7 +324,7 @@ static void header_generate_func_set_mem(
                 break;
                 break;
             default :
-                error("Invalid SORM_TYPE.");
+                printf("Invalid SORM_TYPE.\n");
                 exit(0);
         }
     }
@@ -377,7 +379,7 @@ static void header_generate_func_delete(
                 case SORM_TYPE_BLOB :
                     break;
                 default :
-                    error("Invalid SORM_TYPE.");
+                    printf("Invalid SORM_TYPE.\n");
                     exit(0);
             }
         }
@@ -445,7 +447,7 @@ static void header_generate_func_select(
                 case SORM_TYPE_BLOB :
                     break;
                 default :
-                    error("Invalid SORM_TYPE.");
+                    printf("Invalid SORM_TYPE.\n");
                     exit(0);
             }
         }
@@ -542,7 +544,7 @@ void header_generate(
         const sorm_table_descriptor_t *table_desc)
 {
     FILE *file;
-    char *file_name, *upper_table_name, *upper_column_name;
+    char *file_name;
     int ret, offset;
     int table_name_len;
     int i;
@@ -555,7 +557,7 @@ void header_generate(
     _free(NULL, file_name);
     if(file == NULL)
     {
-        error("fopen file(%s) error : %s.", file_name, strerror(errno));
+        printf("fopen file(%s) error : %s.\n", file_name, strerror(errno));
         return;
     }
 

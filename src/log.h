@@ -82,13 +82,13 @@ static inline void log_final()
 
 #else
 
-#define log_log(f...)   NULL
-#define log_debug(f...) NULL
-#define log_error(f...) NULL
-#define log_info(f...)  NULL
+#define log_log(f...)   do {} while(0)
+#define log_debug(f...) do {} while(0)
+#define log_error(f...) do {} while(0)
+#define log_info(f...)  do {} while(0)
 
-#define log_init() NULL
-#define log_final() NULL
+#define log_init()      LOG_OK
+#define log_final()     do {} while(0)
 
 #endif
 

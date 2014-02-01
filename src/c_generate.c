@@ -144,13 +144,13 @@ static void c_generate_func_create_table(
     in_file = fopen(in_file_name, "r");
     if(in_file == NULL)
     {
-        error("fopen file(%s) error : %s.", in_file_name, strerror(errno));
+        printf("fopen file(%s) error : %s.\n", in_file_name, strerror(errno));
         return;
     }
     
     if(fgets(sql_stmt, SQL_STMT_MAX_LEN + 1, in_file) == NULL)
     {
-        error("read from file(%s) error : %s.", in_file_name, strerror(errno));
+        printf("read from file(%s) error : %s.\n", in_file_name, strerror(errno));
         return;
     }
 
@@ -161,8 +161,7 @@ static void c_generate_func_create_table(
     fprintf(file, "int %s_create_table(const sorm_connection_t *conn)\n{\n", 
             table_desc->name);
     fprintf(file, INDENT "char *sql_stmt = \"%s\";\n\n", sql_stmt);
-    fprintf(file, INDENT "return sorm_run_stmt(conn, sql_stmt, SORM_RWLOCK_WRITE);\n",
-            table_desc->name);
+    fprintf(file, INDENT "return sorm_run_stmt(conn, sql_stmt, SORM_RWLOCK_WRITE);\n");
     fprintf(file, "}\n\n");
 
     return;
@@ -182,9 +181,14 @@ static void c_generate_func_delete_table(
 static void c_generate_func_save(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
-    fprintf(file, "int %s_save(sorm_connection_t *conn, %s_t *%s)\n{\n",
+    fprintf(file, "int %s_insert(sorm_connection_t *conn, %s_t *%s)\n{\n",
             table_desc->name, table_desc->name, table_desc->name);
-    fprintf(file, INDENT "return sorm_save"
+    fprintf(file, INDENT "return sorm_insert"
+            "(conn, (sorm_table_descriptor_t*)%s);\n", table_desc->name);
+    fprintf(file, "}\n\n");
+    fprintf(file, "int %s_replace(sorm_connection_t *conn, %s_t *%s)\n{\n",
+            table_desc->name, table_desc->name, table_desc->name);
+    fprintf(file, INDENT "return sorm_replace"
             "(conn, (sorm_table_descriptor_t*)%s);\n", table_desc->name);
     fprintf(file, "}\n\n");
 }
@@ -256,7 +260,7 @@ static void c_generate_func_set_mem(
                         table_desc->name, i, table_desc->columns[i].name);
                 break;
             default :
-                error("Invalid SORM_TYPE.");
+                printf("Invalid SORM_TYPE.\n");
                 exit(0);
         }
         fprintf(file, "}\n\n");
@@ -278,8 +282,7 @@ static void c_generate_func_delete(
     fprintf(file, "int %s_delete_by(const sorm_connection_t *conn, "
             "const char *filter)\n{\n", table_desc->name);
     fprintf(file, INDENT "return sorm_delete_by"
-            "(conn, &%s_table_descriptor, filter);\n", table_desc->name, 
-            table_desc->name);
+            "(conn, &%s_table_descriptor, filter);\n", table_desc->name);
     fprintf(file, "}\n\n");
 
     for(i = 0; i < table_desc->columns_num; i ++)
@@ -334,7 +337,7 @@ static void c_generate_func_delete(
                 case SORM_TYPE_BLOB :
                     break;
                 default :
-                    error("Invalid SORM_TYPE.");
+                    printf("Invalid SORM_TYPE.\n");
                     exit(0);
             }
             fprintf(file, "}\n\n");
@@ -433,7 +436,7 @@ static void c_generate_func_select(
                 case SORM_TYPE_BLOB :
                     break;
                 default :
-                    error("Invalid SORM_TYPE.");
+                    printf("Invalid SORM_TYPE.\n");
                     exit(0);
             }
             fprintf(file, "}\n\n");
@@ -598,7 +601,6 @@ void c_generate(
 {
     FILE *file;
     char *file_name, *header_file_name, *foreign_header_file_name;
-    int ret, offset;
     int table_name_len, foreign_table_name_len;
     int i;
 
@@ -611,7 +613,7 @@ void c_generate(
     file = fopen(file_name, "w");
     if(file == NULL)
     {
-        error("fopen file(%s) error : %s.", file_name, strerror(errno));
+        printf("fopen file(%s) error : %s.\n", file_name, strerror(errno));
     }
 
     fprintf(file, "#include \"%s\"\n", header_file_name);

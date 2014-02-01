@@ -5,6 +5,7 @@ AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 AC_CONFIG_HEADER([config.h])
 
 AC_PROG_CC
+AM_PROG_AR
 LT_INIT
 AM_PROG_LEX
 AC_PROG_YACC

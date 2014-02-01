@@ -1,3 +1,8 @@
-release.lo: release.c release.h
+release.lo: release.c /usr/include/stdc-predef.h \
+ /usr/include/x86_64-linux-gnu/bits/predefs.h release.h
+
+/usr/include/stdc-predef.h:
+
+/usr/include/x86_64-linux-gnu/bits/predefs.h:
 
 release.h:

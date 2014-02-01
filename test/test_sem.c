@@ -84,7 +84,7 @@ int main(int argc, char **argv)
     //    device_set_id(device, i);
     //    sprintf(buf, "%d", i);
     //    device_set_uuid(device, buf);
-    //    device_save(conn, device);
+    //    device_insert(conn, device);
 
     //    i ++;
     //}

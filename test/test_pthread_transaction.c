@@ -54,10 +54,10 @@ static void* pthread_a_work(void* args) {
     device_set_uuid(device, "uuid-3");
     device_set_name(device, "name-3");
     device_set_password(device, "passwd-3");
-    ret = device_save(_conn, device);
+    ret = device_insert(_conn, device);
     assert(ret == SORM_OK);
     device_free(device);
-    printf("save uuid-3\n");
+    printf("insert uuid-3\n");
     pthread_mutex_lock(&mutex);
     condition_b = 1;
     pthread_mutex_unlock(&mutex);
@@ -170,7 +170,7 @@ int main() {
         sprintf(device->password, "passwd-%d", i);
         device->password_stat = SORM_STAT_VALUED;
 
-        device_save(_conn, device);
+        device_insert(_conn, device);
 
         device_free(device);
     }

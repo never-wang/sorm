@@ -10,6 +10,8 @@
 
 static sorm_list_t *sorm_list_entry = NULL;
 
+int yylex ();
+int yyerror (const char*);
 #define parse_column(column_name)    \
     do{ \
         column_desc->name = (column_name);   \
@@ -153,7 +155,7 @@ unique_columns :
       NAME
 %%
 
-int yyerror(char *msg)
+int yyerror(const char *msg)
 {
 printf("Error encountered: %s\n", msg);
 return -1;

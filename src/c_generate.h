@@ -16,7 +16,7 @@
 
 #include "sorm.h"
 
-void sorm_header_generate(
-    const sorm_table_descriptor_t *table_desc, char *in_file_name);
+void c_generate(
+        const sorm_table_descriptor_t *table_desc, char *in_file_name);
 
 #endif
