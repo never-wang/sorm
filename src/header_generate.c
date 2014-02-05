@@ -242,6 +242,7 @@ static void header_generate_func_new(
         FILE *file, const sorm_table_descriptor_t *table_desc)
 {
     fprintf(file, "%s_t* %s_new(const sorm_allocator_t *allocator);\n\n", table_desc->name, table_desc->name);
+    fprintf(file, "%s_t* %s_new_array(const sorm_allocator_t *allocator, int num);\n\n", table_desc->name, table_desc->name);
 }
 
 static void header_generate_func_free(
@@ -493,40 +494,40 @@ static void header_generate_func_select(
             table_desc->name, table_desc->name, table_desc->name); 
 
     /* select by foreign key */
-    for(i = 0; i < table_desc->columns_num; i ++)
-    {
-        if(table_desc->columns[i].is_foreign_key == 1)
-        {
-            fprintf(file, "int %s_select_some_array_by_%s(\n"
-                    INDENT_TWICE "const sorm_connection_t *conn,\n"
-                    INDENT_TWICE "const sorm_allocator_t *allocator,\n"
-                    INDENT_TWICE "const char *column_names, const char *filter,\n" 
-                    INDENT_TWICE "int *n, %s_t **%ss_array);\n",
-                    table_desc->name, table_desc->columns[i].foreign_table_name,
-                    table_desc->name, table_desc->name);
-            fprintf(file, "int %s_select_some_list_by_%s(\n"
-                    INDENT_TWICE "const sorm_connection_t *conn,\n"
-                    INDENT_TWICE "const sorm_allocator_t *allocator,\n"
-                    INDENT_TWICE"const char *column_names, const char *filter,\n" 
-                    INDENT_TWICE"int *n, sorm_list_t **%ss_list_head);\n",
-                    table_desc->name, table_desc->columns[i].foreign_table_name,
-                    table_desc->name);
-            fprintf(file, "int %s_select_all_array_by_%s(\n"
-                    INDENT_TWICE "const sorm_connection_t *conn,\n"
-                    INDENT_TWICE "const sorm_allocator_t *allocator,\n"
-                    INDENT_TWICE "const char *column_names, const char *filter,\n"
-                    INDENT_TWICE "int *n, %s_t **%ss_array);\n", 
-                    table_desc->name, table_desc->columns[i].foreign_table_name,
-                    table_desc->name, table_desc->name);
-            fprintf(file, "int %s_select_all_list_by_%s(\n"
-                    INDENT_TWICE "const sorm_connection_t *conn,\n"
-                    INDENT_TWICE "const sorm_allocator_t *allocator,\n"
-                    INDENT_TWICE "const char *column_names, const char *filter,\n" 
-                    INDENT_TWICE "int *n, sorm_list_t **%ss_list_head);\n\n",
-                    table_desc->name, table_desc->columns[i].foreign_table_name,
-                    table_desc->name);
-        }
-    }
+    //for(i = 0; i < table_desc->columns_num; i ++)
+    //{
+    //    if(table_desc->columns[i].is_foreign_key == 1)
+    //    {
+    //        fprintf(file, "int %s_select_some_array_by_%s(\n"
+    //                INDENT_TWICE "const sorm_connection_t *conn,\n"
+    //                INDENT_TWICE "const sorm_allocator_t *allocator,\n"
+    //                INDENT_TWICE "const char *column_names, const char *filter,\n" 
+    //                INDENT_TWICE "int *n, %s_t **%ss_array);\n",
+    //                table_desc->name, table_desc->columns[i].foreign_table_name,
+    //                table_desc->name, table_desc->name);
+    //        fprintf(file, "int %s_select_some_list_by_%s(\n"
+    //                INDENT_TWICE "const sorm_connection_t *conn,\n"
+    //                INDENT_TWICE "const sorm_allocator_t *allocator,\n"
+    //                INDENT_TWICE"const char *column_names, const char *filter,\n" 
+    //                INDENT_TWICE"int *n, sorm_list_t **%ss_list_head);\n",
+    //                table_desc->name, table_desc->columns[i].foreign_table_name,
+    //                table_desc->name);
+    //        fprintf(file, "int %s_select_all_array_by_%s(\n"
+    //                INDENT_TWICE "const sorm_connection_t *conn,\n"
+    //                INDENT_TWICE "const sorm_allocator_t *allocator,\n"
+    //                INDENT_TWICE "const char *column_names, const char *filter,\n"
+    //                INDENT_TWICE "int *n, %s_t **%ss_array);\n", 
+    //                table_desc->name, table_desc->columns[i].foreign_table_name,
+    //                table_desc->name, table_desc->name);
+    //        fprintf(file, "int %s_select_all_list_by_%s(\n"
+    //                INDENT_TWICE "const sorm_connection_t *conn,\n"
+    //                INDENT_TWICE "const sorm_allocator_t *allocator,\n"
+    //                INDENT_TWICE "const char *column_names, const char *filter,\n" 
+    //                INDENT_TWICE "int *n, sorm_list_t **%ss_list_head);\n\n",
+    //                table_desc->name, table_desc->columns[i].foreign_table_name,
+    //                table_desc->name);
+    //    }
+    //}
 }
 
 static void header_generate_func_index(

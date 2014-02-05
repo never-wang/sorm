@@ -12,6 +12,7 @@ static sorm_list_t *sorm_list_entry = NULL;
 
 int yylex ();
 int yyerror (const char*);
+
 #define parse_column(column_name)    \
     do{ \
         column_desc->name = (column_name);   \
@@ -68,6 +69,7 @@ statement:
 ignores : 
         ignores IGNORE
         | IGNORE
+        | 
 
 columns_def :
             columns_def COMMA column_def
@@ -132,7 +134,7 @@ table_defs :
 	   | table_def
 	  
 table_def :
-	  FOREIGN_KEY LEFT_DASH NAME RIGHT_DASH REFERENCES NAME LEFT_DASH NAME RIGHT_DASH
+	  FOREIGN_KEY LEFT_DASH NAME RIGHT_DASH REFERENCES NAME LEFT_DASH NAME RIGHT_DASH ignores
       { 
           sorm_list_t *pos = NULL;
           sorm_column_descriptor_t *column_desc;

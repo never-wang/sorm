@@ -117,6 +117,11 @@ static void c_generate_func_new(
     fprintf(file, INDENT "return (%s_t *)sorm_new(allocator, &%s_table_descriptor);\n", 
             table_desc->name, table_desc->name);
     fprintf(file, "}\n\n");
+    
+    fprintf(file, "%s_t* %s_new_array(const sorm_allocator_t *allocator, int num)\n{\n", table_desc->name, table_desc->name);
+    fprintf(file, INDENT "return (%s_t *)sorm_new_array(allocator, &%s_table_descriptor, num);\n", 
+            table_desc->name, table_desc->name);
+    fprintf(file, "}\n\n");
 }
 
 static void c_generate_func_free(
@@ -502,83 +507,83 @@ static void c_generate_func_select(
             table_desc->name, table_desc->name);
 
     /* select by foreign key */
-    upper_table_name = _malloc(NULL, strlen(table_desc->name) + 1);
-    case_lower2upper(table_desc->name, upper_table_name);
-    for(i = 0; i < table_desc->columns_num; i ++)
-    {
-        if(table_desc->columns[i].is_foreign_key == 1)
-        {
-            column_desc = &table_desc->columns[i];
-            upper_column_name = _malloc(NULL, strlen(column_desc->name) + 1);
-            case_lower2upper(column_desc->name, upper_column_name);
+    //upper_table_name = _malloc(NULL, strlen(table_desc->name) + 1);
+    //case_lower2upper(table_desc->name, upper_table_name);
+    //for(i = 0; i < table_desc->columns_num; i ++)
+    //{
+    //    if(table_desc->columns[i].is_foreign_key == 1)
+    //    {
+    //        column_desc = &table_desc->columns[i];
+    //        upper_column_name = _malloc(NULL, strlen(column_desc->name) + 1);
+    //        case_lower2upper(column_desc->name, upper_column_name);
 
-            foreign_table_name_len = strlen(column_desc->foreign_table_name);
-            upper_foreign_table_name = _malloc(NULL, foreign_table_name_len + 1);
-            case_lower2upper(column_desc->foreign_table_name, upper_foreign_table_name);
-            
-            foreign_column_name_len = strlen(column_desc->foreign_column_name);
-            upper_foreign_column_name = _malloc(NULL, foreign_column_name_len + 1);
-            case_lower2upper(column_desc->foreign_column_name, upper_foreign_column_name);
+    //        foreign_table_name_len = strlen(column_desc->foreign_table_name);
+    //        upper_foreign_table_name = _malloc(NULL, foreign_table_name_len + 1);
+    //        case_lower2upper(column_desc->foreign_table_name, upper_foreign_table_name);
+    //        
+    //        foreign_column_name_len = strlen(column_desc->foreign_column_name);
+    //        upper_foreign_column_name = _malloc(NULL, foreign_column_name_len + 1);
+    //        case_lower2upper(column_desc->foreign_column_name, upper_foreign_column_name);
 
-            fprintf(file, "int %s_select_some_array_by_%s(\n"
-                    INDENT_TWICE "const sorm_connection_t *conn,\n"
-                    INDENT_TWICE "const sorm_allocator_t *allocator,\n"
-                    INDENT_TWICE "const char *column_names, const char *filter,\n" 
-                    INDENT_TWICE "int *n, %s_t **%ss_array)\n{\n"
-                    INDENT     "return sorm_select_some_array_by_join(conn, allocator, column_names,\n"
-                    INDENT_TRIPLE "&%s_table_descriptor, COLUMN__%s__%s,\n"
-                    INDENT_TRIPLE "DESC__%s, COLUMN__%s__%s, \n"
-                    INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, \n"
-                    INDENT_TRIPLE "(sorm_table_descriptor_t **)%ss_array, NULL);\n}\n\n",
-                    table_desc->name, column_desc->foreign_table_name,
-                    table_desc->name, table_desc->name, table_desc->name, 
-                    upper_table_name, upper_column_name, upper_foreign_table_name,  
-                    upper_foreign_table_name, upper_foreign_column_name, table_desc->name);
-            fprintf(file, "int %s_select_some_list_by_%s(\n"
-                    INDENT_TWICE "const sorm_connection_t *conn,\n"
-                    INDENT_TWICE "const sorm_allocator_t *allocator,\n"
-                    INDENT_TWICE"const char *column_names, const char *filter,\n" 
-                    INDENT_TWICE"int *n, sorm_list_t **%ss_list_head)\n{\n"
-                    INDENT     "return sorm_select_some_list_by_join(conn, allocator, column_names,\n"
-                    INDENT_TRIPLE "&%s_table_descriptor, COLUMN__%s__%s, \n"
-                    INDENT_TRIPLE "DESC__%s, COLUMN__%s__%s, \n"
-                    INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, %ss_list_head, NULL);\n}\n\n",
-                    table_desc->name, column_desc->foreign_table_name,
-                    table_desc->name, table_desc->name, 
-                    upper_table_name, upper_column_name, upper_foreign_table_name,  
-                    upper_foreign_table_name, upper_foreign_column_name, table_desc->name);
-            fprintf(file, "int %s_select_all_array_by_%s(\n"
-                    INDENT_TWICE "const sorm_connection_t *conn,\n"
-                    INDENT_TWICE "const sorm_allocator_t *allocator,\n"
-                    INDENT_TWICE "const char *column_names, const char *filter,\n"
-                    INDENT_TWICE "int *n, %s_t **%ss_array)\n{\n"
-                    INDENT     "return sorm_select_all_array_by_join(conn, allocator, column_names,\n"
-                    INDENT_TRIPLE "&%s_table_descriptor, COLUMN__%s__%s,\n"
-                    INDENT_TRIPLE "DESC__%s, COLUMN__%s__%s, \n"
-                    INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, \n"
-                    INDENT_TRIPLE "(sorm_table_descriptor_t **)%ss_array, NULL);\n}\n\n",
-                    table_desc->name, column_desc->foreign_table_name,
-                    table_desc->name, table_desc->name, table_desc->name, 
-                    upper_table_name, upper_column_name, upper_foreign_table_name,  
-                    upper_foreign_table_name, upper_foreign_column_name, table_desc->name);
-            fprintf(file, "int %s_select_all_list_by_%s(\n"
-                    INDENT_TWICE "const sorm_connection_t *conn,\n"
-                    INDENT_TWICE "const sorm_allocator_t *allocator,\n"
-                    INDENT_TWICE "const char *column_names, const char *filter,\n" 
-                    INDENT_TWICE "int *n, sorm_list_t **%ss_list_head)\n{\n"
-                    INDENT     "return sorm_select_all_list_by_join(conn, allocator, column_names,\n"
-                    INDENT_TRIPLE "&%s_table_descriptor, COLUMN__%s__%s,\n"
-                    INDENT_TRIPLE "DESC__%s, COLUMN__%s__%s, \n"
-                    INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, %ss_list_head, NULL);\n}\n\n",
-                    table_desc->name, column_desc->foreign_table_name,
-                    table_desc->name, table_desc->name, 
-                    upper_table_name, upper_column_name, upper_foreign_table_name,  
-                    upper_foreign_table_name, upper_foreign_column_name, table_desc->name);
+    //        fprintf(file, "int %s_select_some_array_by_%s(\n"
+    //                INDENT_TWICE "const sorm_connection_t *conn,\n"
+    //                INDENT_TWICE "const sorm_allocator_t *allocator,\n"
+    //                INDENT_TWICE "const char *column_names, const char *filter,\n" 
+    //                INDENT_TWICE "int *n, %s_t **%ss_array)\n{\n"
+    //                INDENT     "return sorm_select_some_array_by_join(conn, allocator, column_names,\n"
+    //                INDENT_TRIPLE "&%s_table_descriptor, COLUMN__%s__%s,\n"
+    //                INDENT_TRIPLE "DESC__%s, COLUMN__%s__%s, \n"
+    //                INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, \n"
+    //                INDENT_TRIPLE "(sorm_table_descriptor_t **)%ss_array, NULL);\n}\n\n",
+    //                table_desc->name, column_desc->foreign_table_name,
+    //                table_desc->name, table_desc->name, table_desc->name, 
+    //                upper_table_name, upper_column_name, upper_foreign_table_name,  
+    //                upper_foreign_table_name, upper_foreign_column_name, table_desc->name);
+    //        fprintf(file, "int %s_select_some_list_by_%s(\n"
+    //                INDENT_TWICE "const sorm_connection_t *conn,\n"
+    //                INDENT_TWICE "const sorm_allocator_t *allocator,\n"
+    //                INDENT_TWICE"const char *column_names, const char *filter,\n" 
+    //                INDENT_TWICE"int *n, sorm_list_t **%ss_list_head)\n{\n"
+    //                INDENT     "return sorm_select_some_list_by_join(conn, allocator, column_names,\n"
+    //                INDENT_TRIPLE "&%s_table_descriptor, COLUMN__%s__%s, \n"
+    //                INDENT_TRIPLE "DESC__%s, COLUMN__%s__%s, \n"
+    //                INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, %ss_list_head, NULL);\n}\n\n",
+    //                table_desc->name, column_desc->foreign_table_name,
+    //                table_desc->name, table_desc->name, 
+    //                upper_table_name, upper_column_name, upper_foreign_table_name,  
+    //                upper_foreign_table_name, upper_foreign_column_name, table_desc->name);
+    //        fprintf(file, "int %s_select_all_array_by_%s(\n"
+    //                INDENT_TWICE "const sorm_connection_t *conn,\n"
+    //                INDENT_TWICE "const sorm_allocator_t *allocator,\n"
+    //                INDENT_TWICE "const char *column_names, const char *filter,\n"
+    //                INDENT_TWICE "int *n, %s_t **%ss_array)\n{\n"
+    //                INDENT     "return sorm_select_all_array_by_join(conn, allocator, column_names,\n"
+    //                INDENT_TRIPLE "&%s_table_descriptor, COLUMN__%s__%s,\n"
+    //                INDENT_TRIPLE "DESC__%s, COLUMN__%s__%s, \n"
+    //                INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, \n"
+    //                INDENT_TRIPLE "(sorm_table_descriptor_t **)%ss_array, NULL);\n}\n\n",
+    //                table_desc->name, column_desc->foreign_table_name,
+    //                table_desc->name, table_desc->name, table_desc->name, 
+    //                upper_table_name, upper_column_name, upper_foreign_table_name,  
+    //                upper_foreign_table_name, upper_foreign_column_name, table_desc->name);
+    //        fprintf(file, "int %s_select_all_list_by_%s(\n"
+    //                INDENT_TWICE "const sorm_connection_t *conn,\n"
+    //                INDENT_TWICE "const sorm_allocator_t *allocator,\n"
+    //                INDENT_TWICE "const char *column_names, const char *filter,\n" 
+    //                INDENT_TWICE "int *n, sorm_list_t **%ss_list_head)\n{\n"
+    //                INDENT     "return sorm_select_all_list_by_join(conn, allocator, column_names,\n"
+    //                INDENT_TRIPLE "&%s_table_descriptor, COLUMN__%s__%s,\n"
+    //                INDENT_TRIPLE "DESC__%s, COLUMN__%s__%s, \n"
+    //                INDENT_TRIPLE "SORM_INNER_JOIN, filter, n, %ss_list_head, NULL);\n}\n\n",
+    //                table_desc->name, column_desc->foreign_table_name,
+    //                table_desc->name, table_desc->name, 
+    //                upper_table_name, upper_column_name, upper_foreign_table_name,  
+    //                upper_foreign_table_name, upper_foreign_column_name, table_desc->name);
 
-            _free(NULL, upper_foreign_column_name);
-            _free(NULL, upper_foreign_table_name);
-        }
-    }
+    //        _free(NULL, upper_foreign_column_name);
+    //        _free(NULL, upper_foreign_table_name);
+    //    }
+    //}
     _free(NULL, upper_table_name);
 }
 
