@@ -1602,7 +1602,7 @@ int sorm_delete_table(
         goto DB_FINALIZE;
     }
 
-    //log_debug("Success return");
+    log_debug("Success return");
     ret_val = SORM_OK;
 
 DB_FINALIZE :
@@ -3111,9 +3111,10 @@ int sorm_select_all_list_by_join(
 }
 
 int sorm_begin_transaction(
-        sorm_connection_t *conn, sqlite3_stmt **stmt_handle, 
+        sorm_connection_t *conn,  
         char *sql_stmt, int rwlock_flag) {
     int ret, ret_val;
+    sqlite3_stmt *stmt_handle = NULL;
 
     if(conn == NULL)
     {
@@ -3124,22 +3125,17 @@ int sorm_begin_transaction(
 
     if(conn->transaction_num == 0) /* first transaction */
     {
-        _lock(conn, rwlock_flag);
-        if((*stmt_handle) == NULL) {
-            sqlite3_stmt *_stmt_handle;
-            log_debug("prepare stmt : %s", sql_stmt);
-            ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
-                    SQL_STMT_MAX_LEN, &_stmt_handle, NULL);
+        log_debug("prepare stmt : %s", sql_stmt);
+        ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
+                SQL_STMT_MAX_LEN, &stmt_handle, NULL);
 
-            if(ret != SQLITE_OK) {
-                log_debug("sqlite3_prepare error : %s", 
-                        sqlite3_errmsg(conn->sqlite3_handle));
-                return SORM_DB_ERROR;
-            }
-            *stmt_handle = _stmt_handle;
+        if(ret != SQLITE_OK) {
+            log_debug("sqlite3_prepare error : %s", 
+                    sqlite3_errmsg(conn->sqlite3_handle));
+            return SORM_DB_ERROR;
         }
 
-        ret = sqlite3_step(*stmt_handle);
+        ret = sqlite3_step(stmt_handle);
 
         if(ret != SQLITE_DONE) {
             log_debug("sqlite3_step error : %s", 
@@ -3151,10 +3147,22 @@ int sorm_begin_transaction(
         ret_val = SORM_OK;
 
 DB_FINALIZE :
+        ret = _sqlite3_finalize(conn, stmt_handle);
+        if(ret != SQLITE_OK)
+        {
+            log_debug("sqlite3_finalize error : %s", 
+                    sqlite3_errmsg(conn->sqlite3_handle));
+            return SORM_DB_ERROR;
+
+        }
+
         if(ret_val == SORM_OK)
         {
             conn->transaction_num ++; //only ++ when success return
             //log_debug("Success return");
+        } else {
+            // fail, need to unlock
+            _unlock(conn);
         }
         return ret_val;
     }else
@@ -3166,14 +3174,12 @@ DB_FINALIZE :
 }
 
 int sorm_begin_write_transaction(sorm_connection_t *conn) {
-    return sorm_begin_transaction(
-            conn, &conn->begin_write_trans_stmt, 
+    return sorm_begin_transaction(conn, 
             "BEGIN IMMEDIATE TRANSACTION", SORM_RWLOCK_WRITE);
 }
 
 int sorm_begin_read_transaction(sorm_connection_t *conn) {
-    return sorm_begin_transaction(
-            conn, &conn->begin_read_trans_stmt, 
+    return sorm_begin_transaction(conn, 
             "BEGIN DEFERRED TRANSACTION", SORM_RWLOCK_READ);
 }
 
@@ -3198,33 +3204,26 @@ int sorm_commit_transaction(sorm_connection_t *conn)
         return SORM_OK;
     }else if(conn->transaction_num == 1) /* last commit */
     {
-        if(conn->commit_trans_stmt == NULL)
+        ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1, 
+                "COMMIT TRANSACTION");
+        if(ret < 0 || offset > SQL_STMT_MAX_LEN)
         {
-            ret = offset = snprintf(sql_stmt, SQL_STMT_MAX_LEN + 1, 
-                    "COMMIT TRANSACTION");
-            if(ret < 0 || offset > SQL_STMT_MAX_LEN)
-            {
-                log_debug("snprintf error while constructing sql " 
-                        "statment, snprintf length(%d) > max length(%d)", 
-                        offset, SQL_STMT_MAX_LEN);
-                return SORM_TOO_LONG;
-            }
-            log_debug("prepare stmt : %s", sql_stmt);
-            ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
-                    SQL_STMT_MAX_LEN, &stmt_handle, NULL);
-
-            if(ret != SQLITE_OK)
-            {
-                log_debug("sqlite3_prepare error : %s", 
-                        sqlite3_errmsg(conn->sqlite3_handle));
-                return SORM_DB_ERROR;
-            }
-
-            conn->commit_trans_stmt = stmt_handle;
-        }else
-        {
-            stmt_handle = conn->commit_trans_stmt;
+            log_debug("snprintf error while constructing sql " 
+                    "statment, snprintf length(%d) > max length(%d)", 
+                    offset, SQL_STMT_MAX_LEN);
+            return SORM_TOO_LONG;
         }
+        log_debug("prepare stmt : %s", sql_stmt);
+        ret = sqlite3_prepare(conn->sqlite3_handle, sql_stmt, 
+                SQL_STMT_MAX_LEN, &stmt_handle, NULL);
+
+        if(ret != SQLITE_OK)
+        {
+            log_debug("sqlite3_prepare error : %s", 
+                    sqlite3_errmsg(conn->sqlite3_handle));
+            return SORM_DB_ERROR;
+        }
+
 
         ret = sqlite3_step(stmt_handle);
 
@@ -3235,16 +3234,25 @@ int sorm_commit_transaction(sorm_connection_t *conn)
             ret_val = SORM_DB_ERROR;
             goto DB_FINALIZE;
         }
-        _unlock(conn);
-
         ret_val = SORM_OK;
 
 DB_FINALIZE :
+        ret = _sqlite3_finalize(conn, stmt_handle);
+        if(ret != SQLITE_OK)
+        {
+            log_debug("sqlite3_finalize error : %s", 
+                    sqlite3_errmsg(conn->sqlite3_handle));
+            return SORM_DB_ERROR;
+
+        }
         if(ret_val == SORM_OK)
         {
             conn->transaction_num --; //only ++ when success return
             //log_debug("Success return");
         }
+        // always unlock
+        _unlock(conn);
+
         return ret_val;
     }else
     {
@@ -3309,9 +3317,6 @@ int sorm_rollback_transaction(sorm_connection_t *conn)
 
 DB_FINALIZE :
         ret = _sqlite3_finalize(conn, stmt_handle);
-        _unlock(conn);
-        conn->transaction_num --; //always --
-
         if(ret != SQLITE_OK)
         {
             log_debug("sqlite3_finalize error : %s", 
@@ -3319,7 +3324,9 @@ DB_FINALIZE :
             return SORM_DB_ERROR;
 
         }
-
+        
+        conn->transaction_num --; //always --
+        _unlock(conn);
         return ret_val;
     }else
     {
@@ -3339,34 +3346,6 @@ int sorm_close(sorm_connection_t *conn) {
 
     //log_debug("Start");
     //finalize pre-prepared stmt
-    if(conn->begin_read_trans_stmt != NULL) {
-        ret = sqlite3_finalize(conn->begin_read_trans_stmt);
-        if(ret != SQLITE_OK) {
-            log_debug("sqlite3_finalize error : %s", 
-                    sqlite3_errmsg(conn->sqlite3_handle));
-            return SORM_DB_ERROR;
-        }
-        conn->begin_read_trans_stmt = NULL;
-    }
-    if(conn->begin_write_trans_stmt != NULL) {
-        ret = sqlite3_finalize(conn->begin_write_trans_stmt);
-        if(ret != SQLITE_OK) {
-            log_debug("sqlite3_finalize error : %s", 
-                    sqlite3_errmsg(conn->sqlite3_handle));
-            return SORM_DB_ERROR;
-        }
-        conn->begin_write_trans_stmt = NULL;
-    }
-    if(conn->commit_trans_stmt != NULL) {
-        log_debug("commit_trans_stmt finalize.");
-        ret = sqlite3_finalize(conn->commit_trans_stmt);
-        if(ret != SQLITE_OK) {
-            log_debug("sqlite3_finalize error : %s", 
-                    sqlite3_errmsg(conn->sqlite3_handle));
-            return SORM_DB_ERROR;
-        }
-        conn->commit_trans_stmt = NULL;
-    }
 
     ret = SQLITE_BUSY;
 

@@ -81,6 +81,7 @@ typedef struct sorm_list_s
 #define sorm_list_for_each_safe(pos, scratch, head) \
     for(pos = (head)->next, scratch = pos->next; pos != (head); \
             pos = scratch, scratch = pos->next)
+
 #define sorm_list_free(allocator, head)\
     _list_free(allocator, head, (void*)(sorm_free))
 
@@ -250,9 +251,9 @@ typedef struct sorm_connection_s
     int flags;
 
     /* to store pre-prepared transaction statement */
-    sqlite3_stmt *begin_read_trans_stmt;
-    sqlite3_stmt *begin_write_trans_stmt;
-    sqlite3_stmt *commit_trans_stmt;
+    //sqlite3_stmt *begin_read_trans_stmt;
+    //sqlite3_stmt *begin_write_trans_stmt;
+    //sqlite3_stmt *commit_trans_stmt;
     /* remove it , because roolback should be fianlized immediately */
     //sqlite3_stmt *rollback_trans_stmt;
 } sorm_connection_t;
@@ -704,6 +705,13 @@ int sorm_select_iterate_by_join_open(
         const sorm_table_descriptor_t *table2_desc, 
         const char *table2_column_name,
         sorm_join_t join, const char *filter, 
+        sorm_iterator_t **iterator);
+
+int sorm_select_iterate_by_open( 
+        const sorm_connection_t *conn, 
+        const sorm_allocator_t *allocator, 
+        const sorm_table_descriptor_t *table_desc, 
+        const char *columns_name, const char *filter, 
         sorm_iterator_t **iterator);
 
 int sorm_select_iterate_by_join(
